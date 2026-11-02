@@ -63,4 +63,6 @@ iOS may eventually have a .ipa, but for now, use the mobileconfig **[here](https
 Once you open the file on iOS, go to Settings->General->VPN & Device Management->Free-RTC and Install. It isn't signed because I am not rich so make sure you understand what it does.
 Then go to your home screen, look for the Free-RTC icon, and bam! You have a psuedo-app.
 ##
+For support, feature ideas, general help, or anything else Free-RTC, contact me at **[free.rtc.support@gmail.com](mailto:free.rtc.support@gmail.com)**. 💙
+##
 Hope you like it! This is a relatively small project, so please don't hack it 🥺

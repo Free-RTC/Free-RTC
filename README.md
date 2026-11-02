@@ -4,7 +4,7 @@ Free-RTC is primarily browser-based at **[this link](https://free-rtc.web.app)**
 ## WebRTC
 Free-RTC uses WebRTC for all communication features, so data is sent only between connected users instead of being stored on a server, so messages can be lost.
 Be careful when using WebRTC on metered connections, as it uploads data to every connected user, skyrocketing data usage with many connected users.
-Also beware, WebRTC can expose IP addresses if other connected users know how, which could leak your general location to the other person. Use a VPN if you are connecting to others you don't trust for extra security.
+Also beware, WebRTC can expose IP addresses if other connected users know how to see it, which could leak your general location to the other person. Use a VPN if you are connecting to others you don't trust for extra security.
 ## Features
 ### Communication
 - Voice & video chat w/ mute & deafen

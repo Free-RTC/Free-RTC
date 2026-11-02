@@ -64,5 +64,6 @@ Once you open the file on iOS, go to Settings->General->VPN & Device Management-
 Then go to your home screen, look for the Free-RTC icon, and bam! You have a psuedo-app.
 ##
 For support, feature ideas, general help, or anything else Free-RTC, contact me at **[free.rtc.support@gmail.com](mailto:free.rtc.support@gmail.com)**. 💙
+Free-RTC is not affiliated in any way with [freertc.org](https://freertc.org/), was coincidence we had the same name, plssssss do not sue me.
 ##
 Hope you like it! This is a relatively small project, so please don't hack it 🥺

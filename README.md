@@ -45,5 +45,7 @@ Be careful when using WebRTC on metered connections, as it uploads data to every
   - Your settings and preferences
   - Your username
 - No message, file, voice or video data, or anything other than the above, is saved to the Free-RTC servers with or without an account.
+## Where to get it?
+Go to https://free-rtc.web.app to use FreeRTC. Apps will soon be available for Windows, MacOS, Linux, Android, and iOS.
 ##
 Hope you like it! Relatively small project, so please don't hack it 🥺

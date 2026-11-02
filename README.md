@@ -1,6 +1,9 @@
 ## Free-RTC v2.0
 Free-RTC is a free communication platform that offers completely free, end-to-end encrypted voice, video, chat, screen sharing, file sharing, polls, and much more, all without tracking any user data.
 Free-RTC is primarily browser-based at https://free-rtc.web.app, but desktop apps for Windows and MacOS are actively being worked on!
+## WebRTC
+Free-RTC uses WebRTC for all communication features, so data is sent only between connected users instead of being stored on a server, so messages can be lost.
+Be careful when using WebRTC on metered connections, as it uploads data to every connected user, skyrocketing data usage with many connected users.
 ## Features
 ### Communication
 - Voice & video chat w/ mute & deafen
@@ -10,6 +13,7 @@ Free-RTC is primarily browser-based at https://free-rtc.web.app, but desktop app
 ### Room
 - 1000 total rooms can be made at once
 - Optional room password for security
+- Dark & light mode option
 ### Chat
 - Reply to messages
 - React with emoji
@@ -30,4 +34,16 @@ Free-RTC is primarily browser-based at https://free-rtc.web.app, but desktop app
 - Custom keyboard shortcuts
 - Built-in browser notifications
 - Remove limits in the settings menu
-and more (WIP)
+- Customizable interface sound effects
+### Account
+- Completely optional account system
+- Custom interface color if you have account
+- Saves the following data to the Free-RTC servers for your account:
+  - Bio
+  - Name color
+  - Profile link
+  - Your settings and preferences
+  - Your username
+- No message, file, voice or video data, or anything other than the above, is saved to the Free-RTC servers with or without an account.
+##
+Hope you like it! Relatively small project, so please don't hack it 🥺

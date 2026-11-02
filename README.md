@@ -1,6 +1,6 @@
 ## Free-RTC v2.0
 Free-RTC is a free communication platform that offers completely free, end-to-end encrypted voice, video, chat, screen sharing, file sharing, polls, and much more, all without tracking any user data.
-Free-RTC is primarily browser-based at https://free-rtc.web.app, but desktop apps for Windows and MacOS are actively being worked on!
+Free-RTC is primarily browser-based at **[this link](https://free-rtc.web.app)**, but desktop apps for Windows and MacOS are actively being worked on!
 ## WebRTC
 Free-RTC uses WebRTC for all communication features, so data is sent only between connected users instead of being stored on a server, so messages can be lost.
 Be careful when using WebRTC on metered connections, as it uploads data to every connected user, skyrocketing data usage with many connected users.
@@ -45,7 +45,22 @@ Be careful when using WebRTC on metered connections, as it uploads data to every
   - Your settings and preferences
   - Your username
 - No message, file, voice or video data, or anything other than the above, is saved to the Free-RTC servers with or without an account.
+## Changelog
+Changelog is available at the website!
 ## Where to get it?
-Go to https://free-rtc.web.app to use FreeRTC. Apps will soon be available for Windows, MacOS, Linux, Android, and iOS.
+### Browser
+Go to **[the Free-RTC website](https://free-rtc.web.app)** to use in the browser.
+### Windows
+Windows .exe version coming soon!
+### MacOS
+MacOS .app version coming soon!
+### Linux
+Linux version coming soon!
+### Android
+Android .apk version coming soon!
+### iOS
+iOS may eventually have a .ipa, but for now, use the mobileconfig **[here](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/app/iOS/Free-RTC.mobileconfig)**.
+Once you open the file on iOS, go to Settings->General->VPN & Device Management->Free-RTC and Install. It isn't signed because I am not rich so make sure you understand what it does.
+Then go to your home screen, look for the Free-RTC icon, and bam! You have a psuedo-app.
 ##
-Hope you like it! Relatively small project, so please don't hack it 🥺
+Hope you like it! This is a relatively small project, so please don't hack it 🥺

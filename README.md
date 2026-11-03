@@ -1,4 +1,4 @@
-## Free-RTC v2.0
+## Free-RTC v2.1
 Free-RTC is a free communication platform that offers completely free, end-to-end encrypted voice, video, chat, screen sharing, file sharing, polls, and much more, all without tracking any user data.
 Free-RTC is primarily browser-based at **[this link](https://free-rtc.web.app)**, but desktop apps for Windows and MacOS are actively being worked on!
 ## WebRTC

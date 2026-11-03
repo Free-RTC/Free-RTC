@@ -61,7 +61,8 @@ Android .apk version coming soon!
 iOS may eventually have a .ipa, but for now, use the mobileconfig **[here](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/app/iOS/Free-RTC.mobileconfig)**.
 Once you open the file on iOS, go to Settings->General->VPN & Device Management->Free-RTC and Install. It isn't signed because I am not rich so make sure you understand what it does.
 Then go to your home screen, look for the Free-RTC icon, and bam! You have a psuedo-app.
-##
+## What if I want to run it myself?
+Sure, you are free to use the code from Free-RTC however you want. Just download the `index.html` file, replace the stock Firebase RTDB config with your own, and make your Firebase rules match the `firebase-rules.json` file. Change it, expand upon it, however you want. Profit off of it, sure! No credit needed. Just make sure you understand the rules, as Free-RTC’s security isn’t the best.
 ##
 For support, feature ideas, general help, or anything else Free-RTC, contact me at **[free.rtc.support@gmail.com](mailto:free.rtc.support@gmail.com)**. 💙
 

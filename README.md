@@ -37,7 +37,7 @@ Also beware, WebRTC can expose IP addresses if other connected users know how to
 - Remove limits in the settings menu
 - Customizable interface sound effects
 ### Account
-- Completely optional account system
+- Completely optional Google-based account system
 - Custom interface color if you have account
 - Saves the following data to the Free-RTC servers for your account:
   - Bio

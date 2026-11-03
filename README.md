@@ -46,8 +46,6 @@ Also beware, WebRTC can expose IP addresses if other connected users know how to
   - Your settings and preferences
   - Your username
 - No message, file, voice or video data, or anything other than the above, is saved to the Free-RTC servers with or without an account.
-## Changelog
-Changelog is available at the website!
 ## Where to get it?
 ### Browser
 Go to **[the Free-RTC website](https://free-rtc.web.app)** to use in the browser.
@@ -63,6 +61,7 @@ Android .apk version coming soon!
 iOS may eventually have a .ipa, but for now, use the mobileconfig **[here](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/app/iOS/Free-RTC.mobileconfig)**.
 Once you open the file on iOS, go to Settings->General->VPN & Device Management->Free-RTC and Install. It isn't signed because I am not rich so make sure you understand what it does.
 Then go to your home screen, look for the Free-RTC icon, and bam! You have a psuedo-app.
+##
 ##
 For support, feature ideas, general help, or anything else Free-RTC, contact me at **[free.rtc.support@gmail.com](mailto:free.rtc.support@gmail.com)**. 💙
 

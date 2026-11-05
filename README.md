@@ -15,12 +15,14 @@ Also beware, WebRTC can expose IP addresses if other connected users know how to
 - 1000 total rooms can be made at once
 - Optional room password for security
 - Dark & light mode option
+- Custom volume control for every connected peer (Separate sliders for Voice, Soundboard, and TTS)
 ### Chat
 - Reply to messages
 - React with emoji
 - Copy messages
 - Edit messages
 - Unsend messages
+- @username mentioning
 - Private messaging
 - Expiring messages
 - Create polls
@@ -32,25 +34,28 @@ Also beware, WebRTC can expose IP addresses if other connected users know how to
 - Custom soundboard volume
 ### Settings
 - Custom video quality
-- Custom keyboard shortcuts
+- Custom keyboard shortcuts with modifier keys
 - Built-in browser notifications
 - Remove limits in the settings menu
 - Customizable interface sound effects
 ### Account
 - Completely optional Google-based account system
 - Custom interface color if you have account
+- Random welcome messages if you have account
 - Saves the following data to the Free-RTC servers for your account:
   - Bio
   - Name color
-  - Profile link
   - Your settings and preferences
   - Your username
+  - Profile link (if chosen)
+  - Profile email (if chosen)
+  - Birthday (if chosen)
 - No message, file, voice or video data, or anything other than the above, is saved to the Free-RTC servers with or without an account.
 ## Where to get it?
 ### Browser
 Go to **[the Free-RTC website](https://free-rtc.web.app/)** to use in the browser.
 ### Windows & MacOS
-Native Windows and MacOS versions are actively being worked on, may be done before the end of November 2026.
+Native Windows and MacOS versions are actively being worked on, may be done before the end of November 2026. Maybe even before November 15th.
 ### Android & iOS
 Android and iOS will sadly not getting native apps because of complexity and costs, but you can easily install Free-RTC as a pseudo-app by adding it as a shortcut to your home screen.
 
@@ -59,6 +64,8 @@ Android and iOS will sadly not getting native apps because of complexity and cos
 **On Android** -> Open Chrome, go to **[https://free-rtc.web.app](https://free-rtc.web.app/)**, tap the three-dot menu, press Install and create shortcut (or Add to Home Screen) and bam!
 ## What if I want to run it myself?
 Sure, you are free to use the code from Free-RTC however you want. Just download the [newest HTML](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/src/web/free-rtc-v2.1.html/), replace the stock Firebase RTDB config with your own, and make your Firebase rules match the [latest rules](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/src/firebase/rtdb-rules-v2.1.json/). Change it, expand upon it, however you want. Profit off of it, sure! No credit needed. Just make sure you understand it, as Free-RTC’s security isn’t the best.
+## Plans for v2.2
+There aren't currently many plans for version 2.2. If you have any, contact the support below!
 ##
 For support, feature ideas, general help, or anything else Free-RTC, contact me at **[free.rtc.support@gmail.com](mailto:free.rtc.support@gmail.com)**. 💙
 

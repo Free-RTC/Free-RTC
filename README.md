@@ -49,20 +49,16 @@ Also beware, WebRTC can expose IP addresses if other connected users know how to
 ## Where to get it?
 ### Browser
 Go to **[the Free-RTC website](https://free-rtc.web.app)** to use in the browser.
-### Windows
-Windows .exe version coming soon!
-### MacOS
-MacOS .app version coming soon!
-### Linux
-Linux version coming soon!
-### Android
-Android .apk version coming soon!
-### iOS
-iOS may eventually have a .ipa, but for now, use the mobileconfig **[here](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/app/iOS/Free-RTC.mobileconfig)**.
-Once you open the file on iOS, go to Settings->General->VPN & Device Management->Free-RTC and Install. It isn't signed because I am not rich so make sure you understand what it does.
-Then go to your home screen, look for the Free-RTC icon, and bam! You have a psuedo-app.
+### Windows & MacOS
+Native Windows and MacOS versions are actively being worked on, may be done before the end of November 2026.
+### Android & iOS
+Android and iOS will sadly not getting native apps because of complexity and costs, but you can easily install Free-RTC as a pseudo-app by adding it as a shortcut to your home screen.
+
+**On iOS** -> Open Safari, go to **[https://free-rtc.web.app](https://free-rtc.web.app)**, tap the Share button, and select Add to Home Screen, and select fullscreen, and bam. Alternatively, download the **[Free-RTC .mobileconfig file](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/app/iOS/Free-RTC.mobileconfig)**. Open the file (make sure it ends with .mobileconfig and not .txt), then go to Settings->General->VPN & Device Management->Free-RTC and install. It isn't signed because I am not rich, so make sure you understand what it does. Then go to your home screen, look for the Free-RTC icon, and bam!
+
+**On Android** -> Open Chrome, go to **[https://free-rtc.web.app](https://free-rtc.web.app)**, tap the three-dot menu, press Install and create shortcut (or Add to Home Screen) and bam!
 ## What if I want to run it myself?
-Sure, you are free to use the code from Free-RTC however you want. Just download the `index.html` file, replace the stock Firebase RTDB config with your own, and make your Firebase rules match the `firebase-rules.json` file. Change it, expand upon it, however you want. Profit off of it, sure! No credit needed. Just make sure you understand the rules, as Free-RTC’s security isn’t the best.
+Sure, you are free to use the code from Free-RTC however you want. Just download the `index.html` file, replace the stock Firebase RTDB config with your own, and make your Firebase rules match the `src/rtdb-rules.json` file. Change it, expand upon it, however you want. Profit off of it, sure! No credit needed. Just make sure you understand it, as Free-RTC’s security isn’t the best.
 ##
 For support, feature ideas, general help, or anything else Free-RTC, contact me at **[free.rtc.support@gmail.com](mailto:free.rtc.support@gmail.com)**. 💙
 

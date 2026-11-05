@@ -1,0 +1,3 @@
+# /src/firebase/archive/
+I apologize, but rtdb-rules for v2.0 and prior are not available due to me not having them anymore. So sorry if you were planning on using an old version. Old versions are still usable, but the rules require reconstruction.
+I may in the future come back to this to reverse-engineer all the old rules for v1.0-2.0, if you want me to do this let me know at the [Free-RTC support email](mailto:free.rtc.support@gmail.com).

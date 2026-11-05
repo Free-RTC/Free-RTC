@@ -1,0 +1,55 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        "pw": {
+          ".write": "auth != null && ($room == 'DEV' ? (newData.isString() && newData.val() == '61a0cd47736b7b06572e959dcdf840c8797cdba2a76221f1ff370d7c067075bf') : !root.child('rooms/' + $room + '/seats').exists())"
+        },
+        "auth": {
+          "$uid": {
+            ".read": "false",
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        },
+        "seats": {
+          ".read": "auth != null",
+          "$seat": {
+            ".write": "auth != null && $seat.matches(/^[0-9]$/) && (data.exists() ? (data.child('uid').val() == auth.uid && newData.child('uid').val() == auth.uid) : (newData.child('uid').val() == auth.uid && root.child('rooms/' + $room + '/auth/' + auth.uid).val() == root.child('rooms/' + $room + '/pw').val()))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['uid','name','color']) && newData.child('uid').isString() && newData.child('name').isString() && newData.child('name').val().length <= 20 && newData.child('color').isString() && newData.child('color').val().matches(/^#[0-9a-fA-F]{6}$/))"
+          }
+        },
+        "signals": {
+          "$to": {
+            ".read": "auth != null && auth.uid == $to",
+            "$message": {
+              ".write": "auth != null && (auth.uid == $to || newData.child('from').val() == auth.uid)"
+            }
+          }
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid && newData.child('admin').val() == data.child('admin').val()",
+        "admin": {
+          ".read": "auth != null"
+        }
+      }
+    },
+    "publicProfiles": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.child('uid').val() == auth.uid && newData.child('public').val() == true && !newData.child('admin').exists() && newData.child('username').isString() && newData.child('username').val().length >= 3 && newData.child('username').val().length <= 20 && newData.child('color').isString() && newData.child('color').val().matches(/^#[0-9a-fA-F]{6}$/)"
+      }
+    },
+    "usernames": {
+      "$username": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || (data.child('uid').val() == auth.uid && (!newData.exists() || newData.child('uid').val() == auth.uid)))",
+        ".validate": "!newData.exists() || (newData.hasChildren(['uid','username']) && newData.child('uid').isString() && newData.child('uid').val() == auth.uid && newData.child('username').isString() && newData.child('username').val().matches(/^[A-Za-z0-9_ -]{3,20}$/) && newData.child('username').val().matches(/.*[A-Za-z0-9].*/))"
+      }
+    }
+  }
+}

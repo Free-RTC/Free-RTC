@@ -1,0 +1,801 @@
+<!--
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ FREE-RTC · VERSION HISTORY                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ 1.0 · Original release                                                       │
+│ • Single-file voice/video room app with a dark responsive interface.          │
+│ • Three-digit room codes, optional passwords, anonymous Firebase auth,       │
+│   Realtime Database presence and WebRTC signaling.                            │
+│ • Microphone, camera, screen sharing, participant roster and soundboard.     │
+│                                                                              │
+│ 1.1 · Peer-to-peer chat                                                       │
+│ • Added chat over WebRTC data channels, with a per-room local browser        │
+│   transcript, timestamps, sender colors, and local history clearing.          │
+│                                                                              │
+│ 1.2 · UI, accessibility and reliability                                       │
+│ • Added coordinated Soundboard/Chat drawers, split resizing, SVG controls,   │
+│   settings/SFX modals, responsive layout and improved chat input styling.     │
+│                                                                              │
+│ 1.3 · Chat, sharing, workspace and controls                                   │
+│ • Fixed range sliders with explicit track/thumb styling so min/max values    │
+│   remain reachable, and fixed the previous visual thumb-inset illusion.      │
+│ • Added WebRTC-only chunked file offers/transfers with metadata previews,     │
+│   receiver-initiated downloads, transfer progress and buffer backpressure.    │
+│ • Added typing status, local read receipts, reactions, replies, direct       │
+│   messages, polls, temporary messages, and message edit/unsend/delete actions.│
+│ • Added a plus menu for attachments, polls, and temporary-message duration.  │
+│ • Docked the side workspace into the main layout and added a horizontal      │
+│   resize handle that expands/contracts the video stage.                       │
+│ • Added custom room IDs, soundboard emoji labels, per-action SFX preferences, │
+│   uploaded local SFX, and settings for upload/message limits.                 │
+│ • Improved screen-share track cleanup, track-ended handling, and teardown.   │
+│                                                                              │
+│ 1.4 · Room creation fix and landing-page redesign                             │
+│ • Reverted custom room IDs to the original randomly selected 3-digit codes.  │
+│ • Removed the extra /createdAt database probes that triggered permission     │
+│   errors with the deployed Firebase rules; room creation checks seats only.  │
+│ • Added guarded startup errors and cleanup so permission failures are        │
+│   shown in the page rather than becoming unhandled promise rejections.        │
+│ • Rebuilt the entry screen as a spacious, responsive two-column landing page.│
+│ • Added an on-site full version-history view covering versions 1.0–1.4.       │
+│                                                                              │
+│ Privacy: chat, polls, reactions, typing, receipts and file bytes use WebRTC   │
+│ data channels; local transcripts and uploaded sound assets stay in this      │
+│ browser. Firebase is still used for room presence and connection signaling.   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free-RTC · v1.4</title>
+<meta name="application-version" content="1.4">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap">
+<style>
+:root{color-scheme:dark;--bg:#11141b;--panel:#1a1f2b;--panel2:#202737;--line:#2a3142;--ink:#e9ecf2;--dim:#9aa5b8;--acc:#4c8dff;--ok:#3ddc97;--bad:#ff646e;--drawer-gap:10px}
+*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--bg);color:var(--ink);font:15px/1.45 Figtree,system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+button,input,select,textarea{font:inherit;color:var(--ink)}button{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer;transition:background .16s,border-color .16s,transform .16s}button:hover{border-color:var(--acc);background:#222b3b}button:active{transform:scale(.98)}button:disabled{opacity:.45;cursor:not-allowed}button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}button.off{background:#3a1d24;border-color:var(--bad);color:#ffd2d2}button.on{border-color:var(--ok);color:#b8ffe0}button.iconbtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:42px;min-height:42px;padding:9px 11px}button.iconbtn svg{width:19px;height:19px;flex:none}button.iconbtn .btnlabel{font-size:.9rem;white-space:nowrap}button.iconbtn .iconwrap{position:relative;display:grid;place-items:center}button.iconbtn .slash{display:none;position:absolute;width:25px;height:2px;background:currentColor;border-radius:3px;transform:rotate(-45deg);box-shadow:0 0 0 2px var(--panel)}button.iconbtn.off .slash{display:block}
+input,select,textarea{background:#151a24;border:1px solid #39445a;border-radius:10px;padding:10px 12px;color:var(--ink);accent-color:var(--acc)}input::placeholder,textarea::placeholder{color:#a2aec2;opacity:1}input:focus,select:focus,textarea:focus{outline:2px solid #4c8dff80;border-color:var(--acc)}input[type=color]{padding:2px;width:46px;height:42px;cursor:pointer}input[type=range]{accent-color:var(--acc)}:focus-visible{outline:2px solid var(--acc);outline-offset:2px}.row{display:flex;gap:8px;align-items:center}.row>input:not([type=color]){flex:1;min-width:0}
+#land{margin:auto;width:min(92vw,400px);display:flex;flex-direction:column;gap:12px;padding:20px}#code{max-width:110px;text-align:center;font-size:1.2rem;letter-spacing:.2em}#app{display:none;flex:1;flex-direction:column;min-height:0;min-width:0}header{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);min-height:58px;background:#131720}header b{font-weight:800;font-size:1.1rem}header span{color:var(--dim);flex:1;min-width:0}main{flex:1;display:flex;min-height:0;min-width:0}#roster{width:300px;flex:none;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px;border-right:1px solid var(--line)}.card{--c:var(--acc);border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel));border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}.card.speak{box-shadow:0 0 0 2px var(--ok)}.card .nm{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.card .st{color:var(--bad);font-size:.8rem}.card button{padding:4px 10px;font-size:.85rem}.card input[type=range]{flex:1;min-width:0}#stage{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:10px;padding:10px;overflow:auto;align-content:start;position:relative;min-width:0}#hint{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);text-align:center;padding:20px;pointer-events:none}.vt{position:relative;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden}.vt video{width:100%;height:100%;object-fit:contain;display:block}.vt.me.cam video{transform:scaleX(-1)}.vt span{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.7);padding:3px 10px;border-radius:99px;font-size:.85rem}
+#bar{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap;padding:9px 10px;padding-bottom:max(9px,env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#131720;z-index:3}#bar button{min-height:42px}.panel{display:none;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;flex-direction:column;gap:10px}
+/* Two coordinated drawers share one fixed-height column. The handle remains grabbable even when a pane is collapsed. */
+#dock{position:fixed;z-index:8;right:12px;top:68px;bottom:86px;width:min(390px,calc(100vw - 24px));display:flex;flex-direction:column;gap:0;pointer-events:none;opacity:0;visibility:hidden;transform:translateX(18px);transition:opacity .22s ease,transform .22s ease,visibility .22s}#dock.open{pointer-events:auto;opacity:1;visibility:visible;transform:translateX(0)}.drawer{display:flex;flex-direction:column;min-height:0;flex:0 0 var(--pane-size,50%);overflow:hidden;background:var(--panel);border:1px solid var(--line);box-shadow:0 18px 55px #0006}.drawer:first-child{border-radius:15px 15px 0 0}.drawer:last-child{border-radius:0 0 15px 15px}.drawer.collapsed{flex-basis:0!important;border-width:0;visibility:hidden}.drawerhead{display:flex;align-items:center;gap:8px;padding:11px 12px;background:#202635;border-bottom:1px solid var(--line);flex:none;min-height:48px}.drawerhead strong{flex:1;font-size:.98rem}.drawerhead .sub{font-size:.74rem;color:var(--dim)}.drawerbody{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}#splitter{height:12px;flex:none;cursor:row-resize;position:relative;touch-action:none;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:2}#splitter:before{content:"";width:42px;height:4px;border-radius:4px;background:#68758a;transition:background .15s,width .15s}#splitter:hover:before,#splitter.dragging:before{background:var(--acc);width:64px}#sounds{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}#sounds div{display:flex;min-width:0}#sounds .s{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:10px 0 0 10px}#sounds .x{border-radius:0 10px 10px 0;padding:4px 9px;color:var(--bad)}#sbcontrols{display:flex;align-items:center;gap:8px}#sbcontrols label{flex:1;display:flex;align-items:center;gap:8px}#sbcontrols input{flex:1;min-width:0}
+#chatlog{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:#141923}.chatmsg{display:flex;flex-direction:column;gap:3px;overflow-wrap:anywhere;padding:8px 10px;border:1px solid #2a3447;background:#1a2130;border-radius:11px}.chatmeta{display:flex;align-items:baseline;gap:8px;font-size:.8rem}.chatname{font-weight:700}.chattime{color:var(--dim);font-size:.72rem}.chattext{white-space:pre-wrap;line-height:1.45;color:#f1f4fa;overflow-wrap:anywhere;user-select:text}#chatempty{margin:auto;color:var(--dim);text-align:center;padding:16px}#chatform{padding:10px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end;background:#1b202c;flex:none}#chatinput{flex:1;min-width:0;resize:none;min-height:44px;max-height:124px;background:#111722;color:#f5f7fc;border:1px solid #46536b;padding:11px 12px;line-height:1.4;caret-color:#75a7ff;box-shadow:inset 0 1px 2px #0004}#chatinput::placeholder{color:#aab5c8}#chatinput:focus{border-color:var(--acc);box-shadow:0 0 0 3px #4c8dff20}#chatnote{padding:8px 12px;color:var(--dim);font-size:.72rem;background:#1b202c;border-top:1px solid #272f40;flex:none}#chatclear{padding:5px 9px;font-size:.8rem;min-height:32px}
+/* Floating modals */
+.modalback{position:fixed;inset:0;z-index:20;background:#060910b8;display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(5px);opacity:0;transition:opacity .18s}.modalback.open{display:flex;opacity:1}.modal{width:min(520px,100%);max-height:min(84vh,760px);overflow:auto;background:#1a1f2b;border:1px solid #38445a;border-radius:18px;box-shadow:0 24px 80px #0009;transform:translateY(8px) scale(.99);transition:transform .18s;padding:0}.modalback.open .modal{transform:translateY(0) scale(1)}.modalhead{position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:15px 17px;background:#202635;border-bottom:1px solid var(--line);z-index:1}.modalhead h2{font-size:1.05rem;margin:0;flex:1}.modalbody{padding:17px;display:flex;flex-direction:column;gap:16px}.settingrow{display:flex;align-items:center;justify-content:space-between;gap:16px}.settingrow>div{flex:1}.settingrow small,.muted{color:var(--dim)}.switch{width:44px;height:26px;appearance:none;background:#414b5f;border-radius:99px;position:relative;padding:0;cursor:pointer;flex:none}.switch:before{content:"";position:absolute;width:18px;height:18px;left:4px;top:3px;border-radius:50%;background:#fff;transition:transform .16s}.switch:checked{background:var(--acc)}.switch:checked:before{transform:translateX(18px)}#wavepreview{width:100%;height:94px;background:#111722;border:1px solid var(--line);border-radius:10px;display:block}#sfxcontrols{display:grid;grid-template-columns:1fr 1fr;gap:12px}#sfxcontrols label{display:flex;flex-direction:column;gap:6px;color:#dce3f0;font-size:.88rem}#sfxcontrols input,#sfxcontrols select{width:100%;min-width:0}#gear{touch-action:none}#gear.spinning svg{transition:transform .05s}
+@media(max-width:760px){header{padding:8px 10px;min-height:52px}header b{font-size:1rem}header #copy{padding:8px 9px;font-size:.82rem}main{flex-direction:column}#roster{width:auto;max-height:31%;min-height:86px;border-right:0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));align-content:start}#stage{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));padding:7px;gap:7px}#bar{gap:6px;padding:7px 6px;padding-bottom:max(7px,env(safe-area-inset-bottom));justify-content:space-around}#bar button.iconbtn{flex:1 1 42px;max-width:80px;min-width:42px;padding:8px 5px;flex-direction:column;gap:3px}#bar .btnlabel{font-size:.65rem!important;white-space:normal!important;line-height:1.1;text-align:center}#bar button svg{width:21px;height:21px}#dock{right:0;left:0;top:54px;bottom:calc(72px + env(safe-area-inset-bottom));width:100%;padding:0 7px}#dock.open{transform:translateX(0)}.drawer{box-shadow:0 12px 36px #0008}.drawer:first-child,.drawer:last-child{border-radius:13px}.drawerhead{padding:9px 11px;min-height:44px}#splitter{height:14px;background:transparent}#chatinput{font-size:16px;min-height:46px}#chatform button{min-height:46px}.modalback{padding:9px}.modal{max-height:90vh;border-radius:15px}.modalbody{padding:14px}#sfxcontrols{grid-template-columns:1fr 1fr}}
+@media(max-width:420px){#rn{font-size:.75rem}#copy{max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#roster{grid-template-columns:1fr}#sfxcontrols{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* v1.3 range inputs: explicitly size the track and thumb so visual padding cannot imply a 5–95% travel range. */
+input[type="range"]{appearance:none;-webkit-appearance:none;display:block;width:100%;min-width:0;height:28px;margin:0;padding:0;border:0;background:transparent;cursor:pointer;accent-color:var(--acc)}
+input[type="range"]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:#39465d;border:0}
+input[type="range"]::-moz-range-track{height:6px;border-radius:999px;background:#39465d;border:0}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#75a7ff;border:2px solid #e7efff;margin-top:-5px;box-shadow:0 1px 4px #0007}
+input[type="range"]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#75a7ff;border:2px solid #e7efff;box-shadow:0 1px 4px #0007}
+#dock{position:relative;inset:auto;z-index:2;width:0;flex:0 0 0;min-width:0;height:100%;opacity:0;visibility:hidden;transform:translateX(12px);overflow:visible;border-left:0;transition:width .22s ease,flex-basis .22s ease,opacity .18s ease,transform .22s ease,visibility .22s}
+#dock.open{width:var(--dock-width,360px);flex:0 0 var(--dock-width,360px);min-width:240px;opacity:1;visibility:visible;transform:translateX(0);border-left:1px solid var(--line);pointer-events:auto}
+#dock .drawer{flex:0 0 var(--pane-size,50%)}
+#dockwidth{width:10px;flex:none;cursor:col-resize;touch-action:none;display:flex;align-items:center;justify-content:center;background:transparent;position:relative;z-index:4}
+#dockwidth:before{content:"";width:4px;height:56px;border-radius:5px;background:#4b566b;transition:background .15s,width .15s}
+#dockwidth:hover:before,#dockwidth.dragging:before{background:var(--acc);width:6px}
+#dock.open #dockwidth{display:flex}
+#dock .drawer:first-child{border-radius:14px 14px 0 0}#dock .drawer:last-child{border-radius:0 0 14px 14px}
+#chat-tools{display:flex;gap:6px;align-items:center;padding:8px 10px;background:#1b202c;border-top:1px solid var(--line)}#chat-tools button{min-height:34px;padding:5px 9px}#chatform #plusbtn{flex:none;width:42px;height:44px;min-width:42px;padding:0;font-size:1.5rem;border-radius:10px}#chatform #chatinput{flex:1}#plusmenu{display:none;position:absolute;bottom:64px;left:10px;z-index:9;max-width:min(300px,90vw);padding:10px;background:#202635;border:1px solid #3a465c;border-radius:12px;box-shadow:0 14px 40px #0009;gap:7px;flex-direction:column}#plusmenu.open{display:flex}#plusmenu button{text-align:left}
+.chatmsg{position:relative}.chatactions{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.chatactions button{font-size:.72rem;padding:3px 7px;min-height:26px}.chatquote{border-left:3px solid var(--acc);padding:4px 8px;color:#c1cbe0;background:#111722;border-radius:4px;font-size:.82rem}.chatfile{border:1px solid #39445a;background:#151b27;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:7px}.filepreview{max-width:100%;max-height:180px;object-fit:contain;border-radius:7px;align-self:flex-start}.filemeta{font-size:.8rem;color:var(--dim);overflow-wrap:anywhere}.filedownload{align-self:flex-start}.fileprogress{width:100%;height:6px;border-radius:99px;background:#343e52;overflow:hidden}.fileprogress span{display:block;height:100%;background:var(--acc);width:0}.wavebars{height:28px;display:flex;gap:2px;align-items:center;max-width:220px}.wavebars i{display:block;width:3px;background:#75a7ff;border-radius:2px;opacity:.9}.typingline{padding:0 12px 5px;color:var(--dim);font-size:.75rem;min-height:18px}.replybanner{display:none;padding:6px 10px;background:#202b40;border-top:1px solid var(--line);font-size:.8rem;gap:8px;align-items:center}.replybanner.open{display:flex}.replybanner span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pollbox{border:1px solid #39445a;background:#151b27;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}.pollopt{display:flex;align-items:center;gap:8px}.pollopt input{width:auto}.statusline{color:var(--dim);font-size:.72rem}
+#land{max-height:100vh;overflow:auto}.featurechip{padding:9px;background:#1a1f2b;border:1px solid var(--line);border-radius:10px;font-size:.82rem;color:#c7d0e0}
+@media(max-width:760px){#dock.open{position:absolute;left:0;right:0;top:0;bottom:0;width:100%;min-width:0;height:auto;flex:none;background:var(--bg);border-left:0;box-shadow:0 0 0 100vmax #05070bc7;z-index:8;padding:0 7px}#dockwidth{display:none!important}#dock .drawer{flex-basis:var(--pane-size,50%)}#app{position:relative}main{position:relative}#stage{min-width:0}}
+@media(max-width:420px){#dock.open{padding:0 4px}#chat-tools{padding:7px}#chatform{gap:5px;padding:7px}#plusmenu{left:6px;bottom:62px}}
+/* v1.4 landing page: spacious two-column layout with a dedicated room card. */
+#land.landing{width:min(1180px,94vw);max-width:1180px;max-height:100dvh;height:100%;margin:0 auto;padding:20px 0 16px;overflow:auto;display:flex;flex-direction:column;gap:0}
+.landing-header{display:flex;align-items:center;gap:16px;padding:2px 4px 18px;border-bottom:1px solid #273043;flex:none}
+.landing-brand{display:flex;align-items:center;gap:11px;flex:1;min-width:0}
+.brandmark{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(145deg,#4c8dff,#3466c7);box-shadow:0 8px 26px #315eb244;color:white;flex:none}
+.brandmark svg{width:24px;height:24px}
+.brandtext{font-weight:800;font-size:1.12rem;letter-spacing:-.025em}.version-pill{border:1px solid #33415b;color:#b8c9e7;border-radius:999px;padding:3px 8px;font-size:.72rem;font-weight:700;margin-left:3px}
+#showchangelog{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#c6d6f3;border-color:#344057;padding:10px 13px;white-space:nowrap}
+.landing-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr);gap:clamp(28px,6vw,90px);align-items:center;flex:1;padding:clamp(24px,4vh,48px) clamp(4px,2vw,24px)}
+.landing-copy{max-width:630px;min-width:0}#land .eyebrow{display:inline-flex;align-items:center;gap:8px;color:#9dbdf9;font-size:.76rem;letter-spacing:.13em;text-transform:uppercase;font-weight:800;margin:0 0 16px}.eyebrow:before{content:"";width:22px;height:2px;background:var(--acc);border-radius:2px}
+#land .landing-copy h1{font-size:clamp(2.6rem,5.3vw,4.7rem);line-height:1.02;letter-spacing:-.06em;margin:0 0 20px;max-width:650px}#land .landing-lede{max-width:570px;color:#aeb9cb;font-size:clamp(1rem,1.3vw,1.12rem);line-height:1.7;margin:0 0 28px}
+.landing-features{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:620px}.landing-feature{display:flex;align-items:flex-start;gap:12px;padding:15px;background:linear-gradient(145deg,#1a202c,#151923);border:1px solid #2b3446;border-radius:14px;min-width:0}.landing-feature-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#263b60;color:#a9c9ff;flex:none}.landing-feature-icon svg{width:19px;height:19px}.landing-feature strong{display:block;font-size:.9rem;margin:1px 0 3px}.landing-feature span{display:block;color:#9ca9bd;font-size:.78rem;line-height:1.5}.landing-privacy{display:flex;gap:10px;align-items:flex-start;margin-top:22px;max-width:580px;color:#9da9bc;font-size:.8rem;line-height:1.6}.landing-privacy svg{width:17px;height:17px;color:var(--ok);flex:none;margin-top:2px}
+.entry-card{width:100%;max-width:440px;justify-self:end;background:linear-gradient(165deg,#1d2432,#171c27 72%);border:1px solid #344057;border-radius:22px;padding:clamp(20px,3vw,30px);box-shadow:0 22px 70px #0004;display:flex;flex-direction:column;gap:12px;min-width:0}.entry-card-head{margin-bottom:5px}.entry-card-head h2{font-size:1.55rem;letter-spacing:-.035em;margin:0 0 5px}#land .entry-card-head p{font-size:.88rem;color:#9eabc0;margin:0;line-height:1.55}.entry-label{display:flex;align-items:center;gap:6px;color:#dce4f2;font-size:.82rem;font-weight:700;margin-bottom:6px}.entry-label small{color:#8996ab;font-weight:400}.entry-card input:not([type=color]){width:100%;min-width:0;height:44px}.entry-card .name-row{display:grid;grid-template-columns:minmax(0,1fr) 50px;gap:10px;align-items:end}.entry-card .color-field{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.entry-card input[type=color]{width:50px;height:44px;border-radius:10px}.entry-card .field{display:flex;flex-direction:column;min-width:0}.action-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;margin-top:2px}.action-btn svg{width:20px;height:20px}.join-divider{display:flex;align-items:center;gap:11px;color:#8290a5;font-size:.69rem;letter-spacing:.1em;font-weight:800;margin:5px 0}.join-divider:before,.join-divider:after{content:"";height:1px;background:#313b4d;flex:1}.joinrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.joinrow #code{max-width:none;width:100%;height:44px;text-align:left;letter-spacing:.3em;font-size:1rem}.joinrow button{min-width:92px}#land .room-hint{color:#8f9cb1;font-size:.75rem;margin:-3px 0 0}.landing-error{padding:10px 12px;border:1px solid #87404b;background:#391e27;color:#ffd7dc;border-radius:10px;font-size:.82rem;line-height:1.5}.landing-footer{border-top:1px solid #273043;padding:14px 4px 0;display:flex;align-items:center;justify-content:space-between;gap:14px;color:#7f8da3;font-size:.75rem;flex:none}.landing-footer button{padding:4px 6px;font-size:.75rem;background:transparent;border:0;color:#a8c4f5}
+.history-modal{width:min(760px,100%)}.history-intro{margin:0;color:#a5b2c7;line-height:1.6}.history-list{display:flex;flex-direction:column;gap:0}.history-entry{padding:15px 0;border-bottom:1px solid #30394a}.history-entry:first-child{padding-top:0}.history-entry:last-child{border-bottom:0;padding-bottom:0}.history-entry-head{display:flex;align-items:center;gap:10px;margin-bottom:7px}.history-version{font-size:.78rem;font-weight:800;color:#c0d6ff;background:#263b60;border:1px solid #3a5580;border-radius:7px;padding:4px 8px}.history-entry h3{font-size:.96rem;margin:0}.history-entry ul{margin:0;padding-left:20px;color:#b3bfd1;font-size:.84rem;line-height:1.7}.history-entry li+li{margin-top:2px}.history-current{font-size:.68rem;color:#8eebc5;border:1px solid #286a52;border-radius:999px;padding:3px 7px;margin-left:auto}
+@media(max-width:850px){#land.landing{width:min(720px,92vw);padding-top:14px}.landing-layout{grid-template-columns:1fr;gap:24px;padding:24px 2px}.landing-copy{max-width:none}#land .landing-copy h1{font-size:clamp(2.45rem,8vw,3.7rem);max-width:630px}#land .landing-lede{margin-bottom:20px}.landing-features{max-width:none}.entry-card{max-width:none;justify-self:stretch}.landing-footer{margin-top:20px}}
+@media(max-width:520px){#land.landing{width:calc(100% - 28px);padding:8px 0 12px}.landing-header{padding-bottom:12px;gap:8px}.brandmark{width:36px;height:36px;border-radius:11px}.brandtext{font-size:1rem}.version-pill{font-size:.67rem}#showchangelog{font-size:.76rem;padding:8px 9px}.landing-layout{padding:20px 0 18px;gap:22px}#land .landing-copy h1{font-size:2.55rem;margin-bottom:12px}#land .landing-lede{font-size:.93rem;line-height:1.6;margin-bottom:17px}.landing-features{gap:8px}.landing-feature{padding:10px;gap:9px;border-radius:12px}.landing-feature-icon{width:30px;height:30px;border-radius:8px}.landing-feature strong{font-size:.8rem}.landing-feature span{font-size:.71rem}.landing-privacy{font-size:.75rem;margin-top:14px}.entry-card{padding:18px;border-radius:17px;gap:10px}.entry-card-head h2{font-size:1.35rem}.landing-footer{align-items:flex-start;flex-wrap:wrap;font-size:.7rem}.history-entry ul{font-size:.8rem}}
+@media(prefers-reduced-motion:reduce){.landing-feature,button,.modalback,.modal{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="land" class="landing">
+  <div class="landing-header">
+    <div class="landing-brand">
+      <span class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg></span>
+      <span class="brandtext">Free-RTC <span class="version-pill">v1.4</span></span>
+    </div>
+    <button id="showchangelog" type="button"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/><path d="m17 16 3 3-3 3"/></svg> Full version history</button>
+  </div>
+  <div class="landing-layout">
+    <section class="landing-copy" aria-labelledby="landingtitle">
+      <p class="eyebrow">Voice · Video · Peer-to-peer</p>
+      <h1 id="landingtitle">Good conversations shouldn't be complicated.</h1>
+      <p class="landing-lede">Free-RTC is a lightweight place to talk, share your screen, exchange messages, and send files with a small group — straight from your browser.</p>
+      <div class="landing-features">
+        <div class="landing-feature"><span class="landing-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg></span><div><strong>Voice & video</strong><span>Hop into a live room with up to 10 people.</span></div></div>
+        <div class="landing-feature"><span class="landing-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span><div><strong>Screen sharing</strong><span>Show a screen or window during the call.</span></div></div>
+        <div class="landing-feature"><span class="landing-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg></span><div><strong>Chat & polls</strong><span>Message each other and collect quick votes.</span></div></div>
+        <div class="landing-feature"><span class="landing-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg></span><div><strong>Direct file sharing</strong><span>Share files peer-to-peer when connected.</span></div></div>
+      </div>
+      <div class="landing-privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg><span>Chat and file contents use WebRTC data channels. Firebase is used for room presence and connection setup, not for storing chat transcripts or shared file bytes. Browser-local history stays on each device.</span></div>
+    </section>
+    <section class="entry-card" aria-labelledby="entrytitle">
+      <div class="entry-card-head"><h2 id="entrytitle">Get into a room</h2><p>Create a new room for your group, or join one with the three-digit code you were given.</p></div>
+      <div class="field"><label class="entry-label" for="name">Your name</label><input id="name" placeholder="What should people call you?" maxlength="20" autocomplete="nickname"></div>
+      <div class="name-row"><div class="field"><label class="entry-label" for="pw">Room password <small>optional</small></label><input id="pw" type="password" placeholder="Add a password" autocomplete="off"></div><label class="color-field" for="color"><span class="entry-label">Color</span><input id="color" type="color" title="Your color" aria-label="Your participant color"></label></div>
+      <button class="pri action-btn" id="create" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Create a new room</button>
+      <div class="join-divider">OR JOIN AN EXISTING ROOM</div>
+      <div class="field"><label class="entry-label" for="code">Three-digit room code</label><div class="joinrow"><input id="code" placeholder="000" inputmode="numeric" autocomplete="off" maxlength="3" aria-describedby="roomhint"><button id="join" type="button">Join room</button></div></div>
+      <p id="roomhint" class="room-hint">Ask the room creator to share their code and password, if one is set.</p>
+      <div id="landerror" class="landing-error" role="alert" aria-live="assertive" hidden></div>
+    </section>
+  </div>
+  <footer class="landing-footer"><span>Free-RTC · Version 1.4</span><span>Small rooms · Browser-based · No account sign-up</span><button id="showchangelogfooter" type="button">View release notes ↗</button></footer>
+</div>
+<div id="app">
+  <header><b>Free-RTC</b><span id="rn"></span><button id="copy" type="button">Copy room code</button></header>
+  <main><div id="roster"></div><div id="stage"><div id="hint">Nobody is on screen.<br>Use Watch next to a member to see their video or stream.</div></div><div id="dockwidth" role="separator" aria-label="Resize side workspace" tabindex="0"></div>
+  <div id="bar" aria-label="Call controls">
+    <button id="mic" class="iconbtn" type="button" aria-label="Mute microphone" title="Mute microphone"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg><i class="slash"></i></span><span class="btnlabel">Mute</span></button>
+    <button id="deaf" class="iconbtn" type="button" aria-label="Deafen" title="Deafen"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><rect x="3" y="13" width="5" height="8" rx="2"/><rect x="16" y="13" width="5" height="8" rx="2"/></svg><i class="slash"></i></span><span class="btnlabel">Deafen</span></button>
+    <button id="cam" class="iconbtn" type="button" aria-label="Start video" title="Start video"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg><i class="slash"></i></span><span class="btnlabel">Video</span></button>
+    <button id="scr" class="iconbtn" type="button" aria-label="Share screen" title="Share screen"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><i class="slash"></i></span><span class="btnlabel">Screen</span></button>
+    <button id="sbb" class="iconbtn" type="button" aria-label="Open soundboard" title="Soundboard"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10v4h4l5 4V6l-5 4z"/><path d="M16 9a5 5 0 0 1 0 6M18.5 6.5a9 9 0 0 1 0 11"/></svg></span><span class="btnlabel">Sounds</span></button>
+    <button id="chatbtn" class="iconbtn" type="button" aria-label="Open chat" title="Chat"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg></span><span class="btnlabel">Chat</span></button>
+    <button id="stb" class="iconbtn" type="button" aria-label="Settings" title="Settings"><span class="iconwrap" id="gear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1 1.1.9-1.2 2.1-1.4-.5a8 8 0 0 1-1.7 1l-.2 1.5h-2.4l-.3-1.5a8 8 0 0 1-1.7-1l-1.4.5-1.2-2.1 1.1-.9a7 7 0 0 1 0-2l-1.1-.9 1.2-2.1 1.4.5a8 8 0 0 1 1.7-1l.3-1.5h2.4l.2 1.5a8 8 0 0 1 1.7 1l1.4-.5 1.2 2.1-1.1.9a7 7 0 0 1 0 2Z" transform="translate(-1 -1) scale(1.08)"/></svg></span><span class="btnlabel">Settings</span></button>
+    <button id="leave" class="iconbtn" type="button" title="Leave room" aria-label="Leave room"><span class="iconwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h7v16h-7M10 8l4 4-4 4M14 12H3"/></svg></span><span class="btnlabel">Leave</span></button>
+  </div>
+
+  <aside id="dock" aria-label="Side drawers">
+    <section class="drawer" id="sbp" aria-label="Soundboard">
+      <div class="drawerhead"><strong>Soundboard</strong><span class="sub">Local audio</span><button id="sbclose" type="button" aria-label="Collapse soundboard" title="Collapse">−</button></div>
+      <div class="drawerbody"><div id="sbcontrols"><label>Volume <input id="sbv" type="range" min="0" max="1" step=".05" value="1" aria-label="Soundboard volume"></label><button id="sbs" type="button">Stop all</button></div><label>Upload audio <input id="up" type="file" accept="audio/*" multiple></label><div id="sounds"></div><small class="muted">Soundboard files stay in this browser and are not sent to other participants.</small></div>
+    </section>
+    <div id="splitter" role="separator" aria-label="Resize soundboard and chat panels" aria-orientation="horizontal" tabindex="0"></div>
+    <section class="drawer" id="chatp" aria-label="Room chat">
+      <div class="drawerhead"><strong>Room chat</strong><span id="chatstatus" class="sub">Connecting…</span><button id="chatclear" type="button" title="Clear this device's saved chat">Clear</button><button id="chatclose" type="button" aria-label="Collapse chat" title="Collapse">−</button></div>
+      <div id="chatlog" role="log" aria-live="polite"><div id="chatempty">No messages yet. Say hello!</div></div>
+      <div class="typingline" id="typingline" aria-live="polite"></div>
+      <div id="chatnote">Peer-to-peer · Saved only in this browser · New joiners receive no history</div>
+      <div class="replybanner" id="replybanner"><span id="replylabel">Replying…</span><button id="replycancel" type="button" aria-label="Cancel reply">✕</button></div>
+      <div id="chat-tools"><select id="privateto" aria-label="Send to" title="Message audience"><option value="all">Everyone</option></select><label class="statusline">Expires <select id="tempduration" aria-label="Temporary message duration"><option value="0">Never</option><option value="60">1 min</option><option value="300">5 min</option><option value="3600">1 hour</option><option value="86400">1 day</option></select></label></div>
+      <div id="plusmenu"><button id="attachfile" type="button">＋ Share a file (up to 1 GB)</button><button id="createpoll" type="button">▤ Create a poll</button><label class="statusline">Temporary message duration<select id="tempmenu"><option value="60">1 minute</option><option value="300">5 minutes</option><option value="3600">1 hour</option><option value="86400">1 day</option></select></label></div>
+      <input id="fileinput" type="file" hidden>
+      <form id="chatform"><button id="plusbtn" type="button" aria-label="More message options" title="Attach, poll, temporary message">＋</button><textarea id="chatinput" rows="1" maxlength="2000" placeholder="Message the room…" aria-label="Chat message"></textarea><button class="pri" type="submit">Send</button></form>
+    </section>
+  </aside>
+
+  <div id="settingsback" class="modalback" role="presentation" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="settingstitle">
+      <div class="modalhead"><h2 id="settingstitle">Settings</h2><button type="button" class="modalclose" aria-label="Close settings">✕</button></div>
+      <div class="modalbody">
+        <label>Video quality you send<select id="qsel"><option>Max</option><option>High</option><option>Low</option></select></label>
+        <small class="muted">Max targets 1080p60, High 720p30, Low 480p15. Applies the next time you start video or screen sharing.</small>
+        <div class="settingrow"><div><strong>Interface sound effects</strong><br><small>Optional local sounds for opening panels, sending chat, and toggling controls.</small></div><input id="sfxenabled" class="switch" type="checkbox" aria-label="Enable interface sound effects"></div>
+        <button id="opensfx" type="button" class="iconbtn"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9zM17 9a5 5 0 0 1 0 6"/></svg> Customize sound effects</button>
+        <small class="muted">Sound effects and uploaded sounds stay in this browser.</small>
+        <div class="settingrow"><div><strong>Soundboard upload limit</strong><br><small>Maximum size per soundboard clip (MB)</small></div><input id="sbmax" type="number" min="1" max="100" value="8" style="width:90px"></div>
+        <div class="settingrow"><div><strong>Shared file limit</strong><br><small>Maximum outgoing file size (MB; up to 1024)</small></div><input id="filemax" type="number" min="1" max="1024" value="1024" style="width:100px"></div>
+        <div class="settingrow"><div><strong>Allow temporary messages</strong><br><small>Disable expiring chat messages entirely</small></div><input id="tempallowed" class="switch" type="checkbox" checked aria-label="Allow temporary messages"></div>
+        <label>Maximum temporary-message duration<select id="tempmax"><option value="60">Up to 1 minute</option><option value="300">Up to 5 minutes</option><option value="3600">Up to 1 hour</option><option value="86400" selected>Up to 1 day</option></select></label>
+        <label>Default temporary-message duration<select id="tempdefault"><option value="0">Never by default</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="3600">1 hour</option><option value="86400">1 day</option></select></label>
+        <div class="settingrow"><div><strong>Allow soundboard uploads</strong><br><small>Turn off to disable new local sound uploads</small></div><input id="sbuploadsEnabled" class="switch" type="checkbox" checked aria-label="Allow soundboard uploads"></div>
+        <div class="settingrow"><div><strong>Allow file sharing</strong><br><small>Turn off to disable outgoing file attachments</small></div><input id="filesEnabled" class="switch" type="checkbox" checked aria-label="Allow file sharing"></div>
+      </div>
+    </section>
+  </div>
+  <div id="sfxback" class="modalback" role="presentation" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="sfxtitle">
+      <div class="modalhead"><h2 id="sfxtitle">Sound effect studio</h2><button type="button" class="sfxclose" aria-label="Close sound effect studio">✕</button></div>
+      <div class="modalbody">
+        <p class="muted" style="margin:0">Shape the tiny UI sounds. The waveform preview updates as you change the tone; use Preview to listen.</p>
+        <svg id="wavepreview" viewBox="0 0 320 90" role="img" aria-label="Sound effect waveform preview"><path id="wavepath" d="" fill="none" stroke="#75a7ff" stroke-width="2" stroke-linecap="round"/></svg>
+        <div id="sfxcontrols">
+          <label>Waveform<select id="sfxwave"><option value="sine">Sine · soft</option><option value="triangle">Triangle · mellow</option><option value="square">Square · retro</option><option value="sawtooth">Sawtooth · bright</option></select></label>
+          <label>Pitch <output id="pitchout">660 Hz</output><input id="sfxpitch" type="range" min="180" max="1200" step="10" value="660"></label>
+          <label>Duration <output id="durout">100 ms</output><input id="sfxduration" type="range" min="40" max="320" step="10" value="100"></label>
+          <label>Volume <output id="volout">20%</output><input id="sfxvolume" type="range" min="0" max="50" step="1" value="20"></label>
+        </div>
+        <label>Action to customize<select id="sfxaction"><option value="default">Default</option><option value="tap">General interface click</option><option value="soundboard">Open / play soundboard</option><option value="chatopen">Open chat</option><option value="settings">Open settings</option><option value="sfxstudio">Open SFX editor</option><option value="send">Send message</option><option value="receive">Receive message</option><option value="mic">Microphone toggle</option><option value="deafen">Deafen toggle</option><option value="camera">Camera toggle</option><option value="screenshare">Screen-share toggle</option><option value="toggle">Other control toggle</option><option value="join">Join room</option><option value="leave">Leave room</option><option value="file">File transfer</option><option value="poll">Poll activity</option></select></label>
+        <label>Upload custom sound for selected action <input id="sfxupload" type="file" accept="audio/*"></label>
+        <button id="sfxclearcustom" type="button">Remove custom sound for this action</button>
+        <div class="row"><button id="sfxpreview" class="pri" type="button">▶ Preview</button><button id="sfxreset" type="button">Reset defaults</button></div>
+      </div>
+    </section>
+  </div>
+  <div id="audio" hidden></div>
+</div>
+
+<div id="historyback" class="modalback" role="presentation" aria-hidden="true">
+  <section class="modal history-modal" role="dialog" aria-modal="true" aria-labelledby="historytitle">
+    <div class="modalhead"><h2 id="historytitle">Free-RTC version history</h2><button id="historyclose" type="button" class="modalclose-history" aria-label="Close version history">✕</button></div>
+    <div class="modalbody">
+      <p class="history-intro">A release-by-release record of the features and improvements in this single-file application.</p>
+      <div class="history-list">
+        <article class="history-entry"><div class="history-entry-head"><span class="history-version">1.0</span><h3>Original release</h3></div><ul><li>Created the original single-file web app for small voice and video rooms.</li><li>Added random three-digit room codes, optional room passwords, participant names and colors, and a ten-person room limit.</li><li>Used anonymous Firebase Authentication, Realtime Database presence and signaling, and WebRTC peer connections.</li><li>Included microphone mute, deafen, camera, screen sharing, participant controls, video quality presets, and a local soundboard.</li></ul></article>
+        <article class="history-entry"><div class="history-entry-head"><span class="history-version">1.1</span><h3>Peer-to-peer chat</h3></div><ul><li>Added text messaging over WebRTC data channels rather than a Firebase message database.</li><li>Added a chat history stored locally in the user's browser, with sender names, timestamps, and a local clear-history control.</li><li>Introduced a dedicated chat panel and improved message input styling.</li></ul></article>
+        <article class="history-entry"><div class="history-entry-head"><span class="history-version">1.2</span><h3>UI, accessibility and reliability</h3></div><ul><li>Added matching SVG icons for call controls, settings, chat, soundboard, and leaving a room.</li><li>Introduced coordinated Soundboard and Chat drawers, a draggable divider, floating settings and sound-effect modals, and responsive mobile styling.</li><li>Added sound-effect previews, per-action sound preferences, local audio upload, video quality settings, and clearer controls.</li></ul></article>
+        <article class="history-entry"><div class="history-entry-head"><span class="history-version">1.3</span><h3>Chat, sharing, workspace and controls</h3></div><ul><li>Added WebRTC-based file offers and chunked transfers, file metadata and previews, receiver-initiated downloads, progress reporting, and send-buffer backpressure.</li><li>Added typing indicators, read receipts, reactions, replies, private messages, polls, temporary messages, and edit/unsend/delete/copy actions.</li><li>Integrated and resized the right-side workspace, added soundboard emoji labels and uploaded local sound effects, and introduced upload and expiration settings.</li><li>Improved screen-share track cleanup and added custom room IDs, which are reverted in v1.4 due to their additional database availability checks.</li></ul></article>
+        <article class="history-entry"><div class="history-entry-head"><span class="history-version">1.4</span><h3>Room creation fix and landing-page redesign</h3><span class="history-current">CURRENT</span></div><ul><li>Restored the original random three-digit room-code flow and removed the custom room ID field.</li><li>Removed the added <code>/createdAt</code> reads and transactions that conflicted with the deployed Firebase rules; added clearer permission-error handling and pending media cleanup.</li><li>Rebuilt the home page as a spacious two-column layout on desktop and a stacked mobile layout, with room creation and joining grouped in a dedicated card.</li><li>Added this full in-app version history covering releases 1.0 through 1.4.</li></ul></article>
+      </div>
+      <p class="history-intro">Privacy note: chat and file contents use WebRTC data channels. Firebase continues to handle participant presence and WebRTC signaling; each browser keeps its own local chat history.</p>
+    </div>
+  </section>
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,signInAnonymously} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getDatabase,ref,get,set,push,remove,update,onValue,onChildAdded,onDisconnect,runTransaction}
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig={apiKey:"AIzaSyAn6egBxB2dk-wuA3U1tWRbl2f79FBt5xs",authDomain:"free-rtc.firebaseapp.com",databaseURL:"https://free-rtc-default-rtdb.firebaseio.com",projectId:"free-rtc",storageBucket:"free-rtc.firebasestorage.app",messagingSenderId:"981358048231",appId:"1:981358048231:web:212f34bd5ae7a296b44342"};
+const ICE={iceServers:[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}]};
+const MAX=10;
+const Q={Max:[1080,60,1e7,4e6],High:[720,30,4e6,2e6],Low:[480,15,15e5,8e5]};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const okColor=c=>/^#[0-9a-f]{6}$/i.test(c)?c:"#4c8dff";
+const S={name:localStorage.name||"",color:okColor(localStorage.color),q:Q[localStorage.q]?localStorage.q:"Max"};
+$("#name").value=S.name;$("#color").value=S.color;$("#qsel").value=S.q;
+
+let db,uid,room,seatRef,ac,micGain,sbGain,microphoneStream=null,queue=Promise.resolve();
+const L={mic:true,deaf:false,cam:null,scr:null,scrA:null};
+const out={mic:null,sb:null};
+const peers={},tiles={},meters={};
+let seats={};
+let chatMessages=[];
+const CHAT_LIMIT=300,CHAT_MAX=2000,FILE_MAX=1024*1024*1024,FILE_CHUNK=16*1024;
+let replyingTo=null,typingTimers={},outgoingFiles=new Map(),incomingFiles=new Map(),readSeen=new Set(),sfxCustom={},requestedDownloads=new Set(),receivedFileUrls=new Map(),audioPlayers={};
+const UI_PREFS_KEY="free-rtc-ui-prefs";
+let drawerSplit=50,drawerOpen={sound:false,chat:false},dragSplit=null,dockWidth=360,dragDock=null;
+let sfxPrefs={enabled:false,wave:"sine",pitch:660,duration:100,volume:20,actions:{},limits:{sbmax:8,filemax:1024,tempdefault:0,tempmax:86400,allowTemp:true,allowSBUploads:true,allowFiles:true}};
+try{sfxPrefs={...sfxPrefs,...JSON.parse(localStorage.getItem(UI_PREFS_KEY)||"{}")}}catch{}
+const chatKey=r=>`free-rtc-chat:${r}`;
+function loadChat(r){try{const x=JSON.parse(localStorage.getItem(chatKey(r))||"[]");return Array.isArray(x)?x.filter(m=>m&&typeof m.text==="string"&&m.text.length<=CHAT_MAX&&typeof m.id==="string").slice(-CHAT_LIMIT).map(m=>({...m,ts:Number.isFinite(m.ts)&&m.ts>0&&m.ts<8640000000000000?m.ts:Date.now(),color:okColor(m.color),name:String(m.name||"Guest").slice(0,20)})):[]}catch{return []}}
+function saveChat(){try{localStorage.setItem(chatKey(room),JSON.stringify(chatMessages.slice(-CHAT_LIMIT)))}catch{}}
+function renderChat(){
+  const log=$("#chatlog"),now=Date.now();
+  chatMessages=chatMessages.filter(m=>!m.expiresAt||m.expiresAt>now);
+  if(!chatMessages.length){log.innerHTML='<div id="chatempty">No messages yet. Say hello!</div>';saveChat();return}
+  log.innerHTML=chatMessages.slice(-CHAT_LIMIT).map(m=>{
+    const mine=m.from===uid||m.mine===true,privateLabel=m.target&&m.target!=="all"?' · private':"",reply=m.reply?`<div class="chatquote">↪ ${esc(m.reply.name||"Message")}: ${esc(m.reply.text||"").slice(0,160)}</div>`:"";
+    const seen=m.readBy&&m.readBy.length?`<span class="statusline">Seen by ${m.readBy.length}</span>`:"";
+    let content=esc(m.text||"");
+    if(m.kind==="file"){
+      const safePreview=typeof m.preview==="string"&&/^data:image\/(?:jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(m.preview)?m.preview:"";
+      const thumb=safePreview?`<img class="filepreview" src="${safePreview}" alt="File preview">`:"";
+      const bars=m.fileType&&m.fileType.startsWith("audio/")?`<div class="wavebars">${Array.from({length:32},(_,i)=>{const h=Array.isArray(m.waveform)&&Number.isFinite(m.waveform[i])?Math.max(3,Math.min(28,m.waveform[i])):5+((i*17+String(m.fileName).length*7)%19);return `<i style="height:${h}px"></i>`}).join("")}</div><div class="filemeta">Audio · ${esc(m.duration||"duration available after download")}</div><button type="button" data-file-play="${esc(m.id)}">▶ Play audio</button>`:"";
+      content=`<div class="chatfile">${thumb}<strong>${esc(m.fileName||"Shared file")}</strong><div class="filemeta">${esc(m.fileType||"application/octet-stream")} · ${formatBytes(m.fileSize||0)}</div>${bars}<button class="filedownload" data-file-download="${esc(m.id)}" type="button">Download file · right-click / long-press</button><div class="filemeta" id="fp-${esc(m.id)}">Waiting for a download request</div></div>`;
+    } else if(m.kind==="poll"){
+      content=`<div class="pollbox"><strong>${esc(m.text)}</strong>${(m.options||[]).map((o,i)=>`<label class="pollopt"><input type="${m.allowMultiple===false?"radio":"checkbox"}" name="poll-${esc(m.id)}" data-poll="${esc(m.id)}" data-option="${i}" ${(m.votes&&m.votes[uid]||[]).includes(i)?"checked":""} ${m.closed?"disabled":""}> <span>${esc(o)}</span> <small class="statusline">${Object.values(m.votes||{}).filter(v=>v.includes(i)).length}</small></label>`).join("")}<button type="button" data-poll-vote="${esc(m.id)}">Submit vote</button></div>`;
+    }
+    const actions=`<div class="chatactions"><button type="button" data-reply="${esc(m.id)}">Reply</button><button type="button" data-react="${esc(m.id)}">😊 React</button><button type="button" data-copy="${esc(m.id)}">Copy</button>${mine&&m.kind!=="file"?`<button type="button" data-edit="${esc(m.id)}">Edit</button><button type="button" data-unsend="${esc(m.id)}">Unsend</button>`:""}<button type="button" data-delete="${esc(m.id)}">Delete for me</button></div>`;
+    const reacts=(m.reactions||[]).length?`<div class="statusline">${m.reactions.map(r=>`${esc(r.emoji)} ${r.count}`).join(" · ")}</div>`:"";
+    return `<div class="chatmsg" data-message="${esc(m.id)}"><div class="chatmeta"><span class="chatname" style="color:${okColor(m.color)}">${esc(m.name||"Guest")}</span><time class="chattime">${new Date(m.ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}${privateLabel}${m.edited?" · edited":""}</time></div>${reply}<div class="chattext">${content}</div>${reacts}${seen}${mine?`<div class="statusline">${m.sentStatus||"Sent locally"}</div>`:""}${actions}</div>`;
+  }).join("");
+  log.scrollTop=log.scrollHeight;saveChat();
+}
+function formatBytes(n){if(!Number.isFinite(n)||n<=0)return "0 B";const u=["B","KB","MB","GB"];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return `${n>=10||i===0?n.toFixed(0):n.toFixed(1)} ${u[i]}`}
+function sendPacket(packet,target="all"){
+  let sent=0;for(const p of Object.values(peers)){if(!p.chat||p.chat.readyState!=="open"||(target!=="all"&&p.id!==target))continue;try{p.chat.send(JSON.stringify(packet));sent++}catch{}}
+  return sent;
+}
+function addChatMessage(m){
+  if(!m||typeof m.id!=="string"||chatMessages.some(x=>x.id===m.id))return;
+  if(typeof m.text!=="string"&&m.kind!=="file"&&m.kind!=="poll")return;
+  if((m.text||"").length>CHAT_MAX)return;
+  const now=Date.now();if(m.expiresAt&&m.expiresAt<=now)return;
+  const entry={...m,name:String(m.name||"Guest").slice(0,20),color:okColor(m.color),ts:Number.isFinite(m.ts)&&m.ts>0&&m.ts<8640000000000000?m.ts:now};
+  chatMessages.push(entry);chatMessages=chatMessages.slice(-CHAT_LIMIT);saveChat();renderChat();
+  if(entry.from!==uid&&drawerOpen.chat&&(entry.target==="all"||entry.target===uid))sendPacket({type:"read",id:entry.id},entry.from||"all");
+}
+function renderRosterTarget(){const sel=$("#privateto"),v=sel.value;sel.innerHTML='<option value="all">Everyone</option>'+Object.values(seats).filter(s=>s.uid!==uid).map(s=>`<option value="${esc(s.uid)}">To ${esc(s.name||"Guest")}</option>`).join("");if([...sel.options].some(o=>o.value===v))sel.value=v}
+function typingBroadcast(){const target=$("#privateto").value;sendPacket({type:"typing",name:S.name||"Guest",active:true,target},target);clearTimeout(typingTimers.local);typingTimers.local=setTimeout(()=>sendPacket({type:"typing",name:S.name||"Guest",active:false,target},target),1600)}
+function updateChatStatus(){
+  const ready=Object.values(peers).filter(p=>p.chat&&p.chat.readyState==="open").length;
+  $("#chatstatus").textContent=ready?`${ready} peer${ready===1?"":"s"} connected`:"Waiting for peers…";
+}
+function saveUIPrefs(){try{localStorage.setItem(UI_PREFS_KEY,JSON.stringify(sfxPrefs))}catch{}}
+async function sfx(kind="tap"){
+  if(!sfxPrefs.enabled||!ac)return;
+  try{if(ac.state==="suspended")await ac.resume();const custom=await getCustomSfx(kind);if(custom){const b=await ac.decodeAudioData(await custom.arrayBuffer()),src=ac.createBufferSource(),g=ac.createGain();src.buffer=b;g.gain.value=Math.max(0,Math.min(1,(sfxPrefs.volume||20)/20));src.connect(g);g.connect(ac.destination);src.start();return}const pref={...sfxPrefs,...(sfxPrefs.actions&&sfxPrefs.actions[kind]||{})};const osc=ac.createOscillator(),gain=ac.createGain(),now=ac.currentTime;const pitch=pref.pitch*(kind==="send"?1.15:kind==="toggle"?.82:1);osc.type=pref.wave;osc.frequency.setValueAtTime(pitch,now);if(kind==="send")osc.frequency.exponentialRampToValueAtTime(Math.max(90,pitch*.72),now+pref.duration/1000);gain.gain.setValueAtTime(0.0001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0002,pref.volume/100*.12),now+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+pref.duration/1000);osc.connect(gain);gain.connect(ac.destination);osc.start(now);osc.stop(now+pref.duration/1000+.02)}catch{}}
+function openDrawer(which){drawerOpen[which]=true;applyDrawerState();sfx(which==="chat"?"chatopen":"soundboard");if(which==="chat"){for(const m of chatMessages)if(m.from&&m.from!==uid&&(m.target==="all"||m.target===uid))sendPacket({type:"read",id:m.id},m.from);setTimeout(()=>$("#chatinput").focus({preventScroll:true}),180)}}
+function closeDrawer(which){drawerOpen[which]=false;applyDrawerState()}
+function applyDrawerState(){const dock=$("#dock"),sb=$("#sbp"),chat=$("#chatp"),any=drawerOpen.sound||drawerOpen.chat;dock.style.setProperty("--dock-width",dockWidth+"px");$("#dockwidth").style.display=any?"flex":"none";dock.classList.toggle("open",any);sb.classList.toggle("collapsed",!drawerOpen.sound);chat.classList.toggle("collapsed",!drawerOpen.chat);sb.style.flexBasis=drawerOpen.sound?(drawerOpen.chat?`calc(${drawerSplit}% - 6px)`:"calc(100% - 12px)"):"0px";chat.style.flexBasis=drawerOpen.chat?(drawerOpen.sound?`calc(${100-drawerSplit}% - 6px)`:"calc(100% - 12px)"):"0px";$("#splitter").style.display="flex";$("#splitter").setAttribute("aria-valuenow",String(drawerSplit));$("#sbb").classList.toggle("on",drawerOpen.sound);$("#chatbtn").classList.toggle("on",drawerOpen.chat)}
+function updateWave(){const path=$("#wavepath"),type=$("#sfxwave").value,f=Number($("#sfxpitch").value),duration=Number($("#sfxduration").value);let d="";for(let i=0;i<=320;i++){const x=i/320,env=Math.min(1,x*14)*Math.min(1,(1-x)*12),phase=x*duration/1000*f*2*Math.PI;let y=type==="square"?(Math.sin(phase)>=0?1:-1):type==="sawtooth"?2*((phase/(2*Math.PI))%1)-1:type==="triangle"?(2/Math.PI)*Math.asin(Math.sin(phase)):Math.sin(phase);const yy=45-y*31*env;d+=(i?"L":"M")+i.toFixed(1)+" "+yy.toFixed(2)+" ";}path.setAttribute("d",d);$("#pitchout").textContent=f+" Hz";$("#durout").textContent=duration+" ms";$("#volout").textContent=$("#sfxvolume").value+"%"}
+function showModal(id){$(id).classList.add("open");$(id).setAttribute("aria-hidden","false");sfx(id==="#settingsback"?"settings":id==="#sfxback"?"sfxstudio":"tap")}
+function hideModal(id){$(id).classList.remove("open");$(id).setAttribute("aria-hidden","true")}
+const mk=t=>{const e=document.createElement(t);e.autoplay=true;e.playsInline=true;return e};
+const meV={cam:mk("video"),scr:mk("video")};
+meV.cam.muted=meV.scr.muted=true;
+
+const H=async(r,p)=>{if(!p)return null;const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(r+":"+p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")};
+
+function analyser(node){const a=ac.createAnalyser();a.fftSize=512;node.connect(a);a.buf=new Uint8Array(a.fftSize);return a}
+let lastExpirySweep=0;
+function loop(){
+  const now=Date.now();if(now-lastExpirySweep>1000){lastExpirySweep=now;const before=chatMessages.length;chatMessages=chatMessages.filter(m=>!m.expiresAt||m.expiresAt>now);if(chatMessages.length!==before){saveChat();renderChat()}}
+  for(const k in meters){
+    const a=meters[k];a.getByteTimeDomainData(a.buf);
+    let m=0;for(const v of a.buf)m=Math.max(m,Math.abs(v-128));
+    const el=document.querySelector(`[data-u="${k}"]`);
+    if(el)el.classList.toggle("speak",m>12);
+  }
+  requestAnimationFrame(loop);
+}
+
+async function setupAudio(){
+  ac=new AudioContext();
+  microphoneStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  const ms=microphoneStream;
+  micGain=ac.createGain();
+  const d0=ac.createMediaStreamDestination();
+  ac.createMediaStreamSource(ms).connect(micGain);micGain.connect(d0);
+  out.mic=d0.stream.getAudioTracks()[0];
+  sbGain=ac.createGain();
+  const d1=ac.createMediaStreamDestination();
+  sbGain.connect(d1);sbGain.connect(ac.destination);
+  out.sb=d1.stream.getAudioTracks()[0];
+  meters[uid]=analyser(micGain);
+}
+
+const send=(to,type,data)=>push(ref(db,`rooms/${room}/signals/${to}`),{from:uid,type,data:JSON.stringify(data)});
+const desc=pc=>({type:pc.localDescription.type,sdp:pc.localDescription.sdp});
+const flush=async p=>{while(p.ice.length)await p.pc.addIceCandidate(p.ice.shift()).catch(()=>{})};
+
+function mkPeer(id){
+  const p=peers[id]={id,pc:null,ice:[],wants:{},mine:{},vol:1,muted:false,born:Date.now(),seat:seats[id],chat:null,
+    aud:[mk("audio"),mk("audio")],cam:mk("video"),scr:mk("video"),scrS:null};
+  p.cam.muted=true;
+  $("#audio").append(...p.aud);
+  return p;
+}
+function drop(id){
+  const p=peers[id];if(!p)return;
+  if(p.pc)p.pc.close();
+  p.aud.forEach(a=>a.remove());
+  for(const k of ["cam","scr"]){const t=tiles[id+":"+k];if(t){t.remove();delete tiles[id+":"+k]}}
+  delete meters[id];delete peers[id];updateChatStatus();
+}
+
+function cap(s,i){
+  const x=s.getParameters();
+  if(!x.encodings||!x.encodings.length)return;
+  const q=Q[S.q];
+  x.encodings[0].maxBitrate=[128e3,128e3,q[3],q[2],128e3][i];
+  return s.setParameters(x).catch(()=>{});
+}
+function apply(p){
+  if(!p.pc)return;
+  const T=[out.mic,out.sb,p.wants.cam?L.cam:null,p.wants.scr?L.scr:null,p.wants.scr?L.scrA:null];
+  p.pc.getTransceivers().slice(0,5).forEach((t,i)=>t.sender.replaceTrack(T[i]).then(()=>cap(t.sender,i)).catch(()=>{}));
+}
+const applyAll=()=>Object.values(peers).forEach(apply);
+
+function bindChatChannel(p,ch){
+  p.chat=ch;
+  ch.onopen=updateChatStatus;
+  ch.onclose=updateChatStatus;
+  ch.onerror=updateChatStatus;
+  ch.binaryType="arraybuffer";
+  ch.onmessage=e=>{
+    if(e.data instanceof ArrayBuffer){receiveFileChunk(p,e.data);return}
+    try{
+      const m=JSON.parse(e.data);if(!m||typeof m.type!=="string")return;
+      const seat=seats[p.id]||p.seat||{},sender={name:seat.name||m.name||"Guest",color:seat.color||m.color||"#4c8dff",from:p.id};
+      if(m.type==="chat"&&typeof m.id==="string"&&typeof m.text==="string"&&m.text.length<=CHAT_MAX){if(m.target&&m.target!=="all"&&m.target!==uid&&m.from!==uid)return;addChatMessage({...m,...sender,target:m.target||"all"});sfx("receive")}
+      else if(m.type==="typing"){typingTimers[p.id]&&clearTimeout(typingTimers[p.id]);if(m.active){$("#typingline").textContent=`${sender.name} is typing…`;typingTimers[p.id]=setTimeout(()=>$("#typingline").textContent="",2200)}else if(!Object.keys(typingTimers).some(k=>k!==p.id&&typingTimers[k]))$("#typingline").textContent=""}
+      else if(m.type==="read"){const x=chatMessages.find(x=>x.id===m.id);if(x){x.readBy=[...new Set([...(x.readBy||[]),sender.name])];saveChat();renderChat()}}
+      else if(m.type==="reaction"){const x=chatMessages.find(x=>x.id===m.id);if(x){x.reactions=x.reactions||[];const r=x.reactions.find(r=>r.emoji===m.emoji);if(r)r.count++;else x.reactions.push({emoji:m.emoji,count:1});saveChat();renderChat()}}
+      else if(m.type==="reply"&&m.message)addChatMessage({...m.message,...sender});
+      else if(m.type==="edit"){const x=chatMessages.find(x=>x.id===m.id);if(x){x.text=String(m.text||"").slice(0,CHAT_MAX);x.edited=true;saveChat();renderChat()}}
+      else if(m.type==="unsend"){chatMessages=chatMessages.filter(x=>x.id!==m.id);saveChat();renderChat()}
+      else if(m.type==="poll"){addChatMessage({...m,...sender,kind:"poll",votes:{}});sfx("poll")}
+      else if(m.type==="poll-vote"){const x=chatMessages.find(x=>x.id===m.id&&x.kind==="poll");if(x){x.votes=x.votes||{};x.votes[p.id]=m.options||[];saveChat();renderChat()}}
+      else if(m.type==="file-offer"){if(m.target&&m.target!=="all"&&m.target!==uid)return;addChatMessage({...m,...sender,kind:"file",text:"",target:m.target||"all"});sfx("receive")}
+      else if(m.type==="file-request"&&m.to===uid){startFileTransfer(p,m.id)}
+      else if(m.type==="file-start"){if(p.rxFileId){sendPeer(p,{type:"file-cancel",id:m.id});return}p.rxFileId=m.id;incomingFiles.set(m.id,{meta:m,chunks:[],size:0,from:p.id});const st=$("#fp-"+CSS.escape(m.id));if(st)st.textContent="Receiving…"}
+      else if(m.type==="file-end"){finishIncomingFile(m.id)}
+      else if(m.type==="file-cancel"){incomingFiles.delete(m.id);requestedDownloads.delete(m.id);if(p.rxFileId===m.id)p.rxFileId=null;const st=$("#fp-"+CSS.escape(m.id));if(st)st.textContent="Transfer cancelled"}
+      else if(m.type==="file-progress"){const st=$("#fp-"+CSS.escape(m.id));if(st)st.textContent=m.text||"Transferring…"}
+      else if(m.type==="poll-close"){const x=chatMessages.find(x=>x.id===m.id);if(x){x.closed=true;saveChat();renderChat()}}
+    }catch(err){console.warn("Ignored malformed peer packet",err)}
+  };
+  updateChatStatus();
+}
+function sendPeer(p,obj){if(p&&p.chat&&p.chat.readyState==="open")try{p.chat.send(JSON.stringify(obj));return true}catch{}return false}
+function findMessage(id){return chatMessages.find(m=>m.id===id)}
+function getCustomSfx(kind){return txStore("fx","readonly",st=>st.get(kind)).then(x=>x&&x.blob).catch(()=>null)}
+function waitBuffered(ch){if(ch.bufferedAmount<512*1024)return Promise.resolve();return new Promise(resolve=>{const done=()=>{ch.removeEventListener("bufferedamountlow",done);resolve()};ch.bufferedAmountLowThreshold=256*1024;ch.addEventListener("bufferedamountlow",done,{once:true});setTimeout(done,250)})}
+async function startFileTransfer(p,id){const file=outgoingFiles.get(id);if(!file||!p.chat||p.chat.readyState!=="open")return;try{sendPeer(p,{type:"file-start",id,name:file.name,size:file.size,fileType:file.type});let pos=0;while(pos<file.size){if(p.chat.readyState!=="open")throw Error("Connection closed");await waitBuffered(p.chat);const chunk=await file.slice(pos,pos+FILE_CHUNK).arrayBuffer();p.chat.send(chunk);pos+=chunk.byteLength;if(pos%(1024*1024)<FILE_CHUNK)sendPeer(p,{type:"file-progress",id,text:`Sending ${formatBytes(pos)} / ${formatBytes(file.size)}`})}sendPeer(p,{type:"file-end",id});sfx("file")}catch(e){sendPeer(p,{type:"file-cancel",id});const st=$("#fp-"+CSS.escape(id));if(st)st.textContent="Transfer failed: "+e.message}}
+function receiveFileChunk(p,buf){const id=p.rxFileId,x=id&&incomingFiles.get(id);if(!x||x.from!==p.id)return;x.chunks.push(buf);x.size+=buf.byteLength;const st=$("#fp-"+CSS.escape(id));if(st)st.textContent=`Receiving ${formatBytes(x.size)} / ${formatBytes(x.meta.size)}`}
+function finishIncomingFile(id){const x=incomingFiles.get(id);if(!x)return;const peer=peers[x.from];if(peer&&peer.rxFileId===id)peer.rxFileId=null;incomingFiles.delete(id);const blob=new Blob(x.chunks,{type:x.meta.fileType||"application/octet-stream"});if(blob.size!==Number(x.meta.size)){const st=$("#fp-"+CSS.escape(id));if(st)st.textContent="Transfer incomplete";return}const url=URL.createObjectURL(blob);receivedFileUrls.set(id,url);const a=document.createElement("a");a.href=url;a.download=x.meta.name||"download";a.textContent="Save received file";a.className="pri";const st=$("#fp-"+CSS.escape(id));if(st){st.textContent=`Received ${formatBytes(blob.size)} `;st.append(a)}else{a.click()}renderChat();sfx("file")}
+async function makeFilePreview(file){let preview="",duration="",waveform=[];const url=URL.createObjectURL(file);try{
+ if(file.type.startsWith("image/")){const bmp=await createImageBitmap(file);const c=document.createElement("canvas"),scale=Math.min(1,180/bmp.width,120/bmp.height);c.width=Math.max(1,Math.round(bmp.width*scale));c.height=Math.max(1,Math.round(bmp.height*scale));c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);bmp.close?.();preview=c.toDataURL("image/jpeg",.45)}
+ else if(file.type.startsWith("video/")){const v=document.createElement("video");v.muted=true;v.preload="metadata";v.src=url;await new Promise(resolve=>{v.onloadedmetadata=()=>{duration=Number.isFinite(v.duration)?`${Math.floor(v.duration/60)}:${String(Math.floor(v.duration%60)).padStart(2,"0")}`:"";try{v.currentTime=Math.min(.1,v.duration||.1)}catch{resolve()}};v.onseeked=resolve;v.onerror=resolve;setTimeout(resolve,1800)});if(v.videoWidth&&v.videoHeight){const c=document.createElement("canvas"),scale=Math.min(1,180/v.videoWidth,120/v.videoHeight);c.width=Math.max(1,Math.round(v.videoWidth*scale));c.height=Math.max(1,Math.round(v.videoHeight*scale));c.getContext("2d").drawImage(v,0,0,c.width,c.height);preview=c.toDataURL("image/jpeg",.45)}}
+ else if(file.type.startsWith("audio/")){const a=document.createElement("audio");a.preload="metadata";a.src=url;await new Promise(resolve=>{a.onloadedmetadata=()=>{duration=Number.isFinite(a.duration)?`${Math.floor(a.duration/60)}:${String(Math.floor(a.duration%60)).padStart(2,"0")}`:"";resolve()};a.onerror=resolve;setTimeout(resolve,1500)});if(file.size<25*1024*1024&&ac){try{const decoded=await ac.decodeAudioData(await file.arrayBuffer()),data=decoded.getChannelData(0),bars=32;for(let i=0;i<bars;i++){const a0=Math.floor(i*data.length/bars),a1=Math.max(a0+1,Math.floor((i+1)*data.length/bars));let peak=0;for(let j=a0;j<a1;j+=Math.max(1,Math.floor((a1-a0)/100)))peak=Math.max(peak,Math.abs(data[j]||0));waveform.push(Math.round(3+peak*25))}}catch{}}}
+ }catch{}finally{URL.revokeObjectURL(url)}return {preview,duration,waveform}}
+async function offerFile(file){if(!file||!room)return;if(sfxPrefs.limits.allowFiles===false){alert("File sharing is disabled in Settings.");return}const limit=Math.min(FILE_MAX,Math.max(1,Number(sfxPrefs.limits.filemax)||1024)*1024*1024);if(file.size>limit){alert(`File is over your current limit (${formatBytes(limit)}).`);return}const id=`file-${uid}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;outgoingFiles.set(id,file);const {preview,duration,waveform}=await makeFilePreview(file);sendFileOffer(file,id,preview,duration,waveform)}
+function sendFileOffer(file,id,preview,duration,waveform){const target=$("#privateto").value;const m={type:"file-offer",id,name:S.name||"Guest",color:S.color,ts:Date.now(),fileName:file.name,fileSize:file.size,fileType:file.type||"application/octet-stream",preview,duration,waveform,target};addChatMessage({...m,kind:"file",from:uid});sendPacket(m,target);}
+function requestFileDownload(id){const m=findMessage(id);if(!m||m.kind!=="file"||requestedDownloads.has(id))return;const sender=m.from;if(sender===uid){alert("This is your shared file. The original file is already on your device.");return}if(!sender)return;const p=peers[sender];if(!p||!p.chat||p.chat.readyState!=="open"){alert("The sender is not connected. Ask them to reconnect before downloading.");return}sendPeer(p,{type:"file-request",id,to:sender});requestedDownloads.add(id);const st=$("#fp-"+CSS.escape(id));if(st)st.textContent="Download requested…"}
+function connect(p,init){
+  const pc=p.pc=new RTCPeerConnection(ICE);
+  pc.ondatachannel=e=>bindChatChannel(p,e.channel);
+  pc.onicecandidate=e=>e.candidate&&send(p.id,"ice",e.candidate.toJSON());
+  pc.ontrack=e=>{
+    const i=pc.getTransceivers().indexOf(e.transceiver),ms=new MediaStream([e.track]);
+    if(i<2){p.aud[i].srcObject=ms;if(i===0)meters[p.id]=analyser(ac.createMediaStreamSource(ms))}
+    else if(i===2)p.cam.srcObject=ms;
+    else{p.scrS=p.scrS||new MediaStream();p.scrS.addTrack(e.track);p.scr.srcObject=p.scrS}
+    audio();
+  };
+  pc.onconnectionstatechange=()=>{if(pc.connectionState==="failed"&&init)pc.restartIce()};
+  if(init){
+    pc.onnegotiationneeded=async()=>{
+      await pc.setLocalDescription(await pc.createOffer());
+      send(p.id,"offer",desc(pc));
+    };
+    ["audio","audio","video","video","audio"].forEach(k=>pc.addTransceiver(k,{direction:"sendrecv"}));
+    bindChatChannel(p,pc.createDataChannel("free-rtc-chat",{ordered:true}));
+    apply(p);
+  }
+  return pc;
+}
+
+async function onSig(m){
+  const d=JSON.parse(m.data),p=peers[m.from]||mkPeer(m.from);
+  if(m.type==="watch"){p.wants=d;apply(p);return}
+  if(m.type==="offer"){
+    const pc=p.pc||connect(p,false);
+    await pc.setRemoteDescription(d);
+    pc.getTransceivers().forEach(t=>t.direction="sendrecv");
+    apply(p);await flush(p);
+    await pc.setLocalDescription(await pc.createAnswer());
+    send(m.from,"answer",desc(pc));
+  }else if(!p.pc)return;
+  else if(m.type==="answer"){await p.pc.setRemoteDescription(d);await flush(p)}
+  else if(p.pc.remoteDescription)await p.pc.addIceCandidate(d).catch(()=>{});
+  else p.ice.push(d);
+}
+
+function audio(){
+  for(const p of Object.values(peers)){
+    const m=L.deaf||p.muted;
+    [p.aud[0],p.aud[1],p.scr].forEach(e=>{e.muted=m;e.volume=p.vol});
+  }
+}
+
+let want=new Set();
+function put(key,el,label,cls){
+  want.add(key);
+  let t=tiles[key];
+  if(!t){
+    t=tiles[key]=document.createElement("div");
+    t.className="vt "+cls;
+    const s=document.createElement("span");s.textContent=label;
+    t.append(el,s);
+    t.ondblclick=()=>document.fullscreenElement?document.exitFullscreen():t.requestFullscreen();
+  }
+  if(!t.isConnected)$("#stage").append(t);
+}
+
+function render(){
+  const a=document.activeElement;
+  if(a&&a.type==="range"&&a.dataset.vol)return;
+  [["#mic",!L.mic||L.deaf,"Unmute microphone","Mute microphone",L.mic&&!L.deaf?"Mute":"Unmute"],["#deaf",L.deaf,"Undeafen","Deafen",L.deaf?"Undeafen":"Deafen"],["#cam",!L.cam,"Start video","Stop video",L.cam?"Stop video":"Video"],["#scr",!L.scr,"Share screen","Stop sharing",L.scr?"Stop sharing":"Screen"]].forEach(([sel,off,offLabel,onLabel,label])=>{const el=$(sel);el.classList.toggle("off",!!off);el.classList.toggle("on",!off);el.setAttribute("aria-label",off?offLabel:onLabel);el.title=off?offLabel:onLabel;el.querySelector(".btnlabel").textContent=label});
+  $("#roster").innerHTML=Object.values(seats).map(s=>{
+    const you=s.uid===uid,p=peers[s.uid];
+    return `<div class="card" data-u="${esc(s.uid)}" style="--c:${okColor(s.color)}">
+      <div class="row"><span class="nm">${esc(s.name)}${you?" (you)":""}</span><span class="st">${s.deaf?"Deafened":!s.mic?"Muted":""}</span></div>`+
+      (you||!p?"":`<div class="row"><input type="range" min="0" max="1" step=".05" value="${p.vol}" data-vol="${esc(s.uid)}" aria-label="Volume"><button data-mute="${esc(s.uid)}" class="${p.muted?"off":""}">${p.muted?"Unmute for me":"Mute for me"}</button></div>`)+
+      (!you&&p&&(s.cam||s.scr)?`<div class="row">${s.cam?`<button data-w="${esc(s.uid)}:cam">${p.mine.cam?"Hide video":"Watch video"}</button>`:""}${s.scr?`<button data-w="${esc(s.uid)}:scr">${p.mine.scr?"Hide stream":"Watch stream"}</button>`:""}</div>`:"")+
+      `</div>`;
+  }).join("");
+  want=new Set();
+  if(L.cam)put("me:cam",meV.cam,"You (video)","me cam");
+  if(L.scr)put("me:scr",meV.scr,"You (screen)","me");
+  for(const p of Object.values(peers))for(const k of ["cam","scr"])
+    if(p.mine[k]&&p.seat&&p.seat[k])put(p.id+":"+k,p[k],`${p.seat.name} ${k==="cam"?"video":"screen"}`,"");
+  for(const k in tiles)if(!want.has(k)){tiles[k].remove();delete tiles[k]}
+  $("#hint").hidden=want.size>0;
+}
+
+function pub(){
+  const on=L.mic&&!L.deaf;
+  micGain.gain.value=on?1:0;
+  update(seatRef,{mic:on,deaf:L.deaf,cam:!!L.cam,scr:!!L.scr});
+  meV.cam.srcObject=L.cam?new MediaStream([L.cam]):null;
+  meV.scr.srcObject=L.scr?new MediaStream([L.scr]):null;
+  audio();applyAll();render();
+}
+
+$("#roster").addEventListener("click",e=>{
+  const m=e.target.dataset.mute,w=e.target.dataset.w;
+  if(m&&peers[m]){peers[m].muted=!peers[m].muted;audio();render()}
+  if(w){
+    const [id,k]=w.split(":"),p=peers[id];if(!p)return;
+    p.mine[k]=!p.mine[k];
+    send(id,"watch",p.mine);render();
+  }
+});
+$("#roster").addEventListener("input",e=>{
+  const v=e.target.dataset.vol;
+  if(v&&peers[v]){peers[v].vol=+e.target.value;audio()}
+});
+$("#roster").addEventListener("change",render);
+
+$("#mic").onclick=()=>{L.mic=!L.mic;pub();sfx("mic")};
+$("#deaf").onclick=()=>{L.deaf=!L.deaf;pub();sfx("deafen")};
+$("#cam").onclick=async()=>{
+  try{
+    if(L.cam){L.cam.stop();L.cam=null}
+    else{const q=Q[S.q];L.cam=(await navigator.mediaDevices.getUserMedia({video:{height:{ideal:q[0]},frameRate:{ideal:Math.min(q[1],30)}}})).getVideoTracks()[0]}
+  }catch(e){return alert("Camera unavailable: "+e.message)}
+  pub();sfx("camera");
+};
+function stopScr(){const old=L.scr,audioTrack=L.scrA;L.scr=L.scrA=null;if(old){old.onended=null;try{old.stop()}catch{}}if(audioTrack){try{audioTrack.stop()}catch{}}if(meV.scr)meV.scr.srcObject=null;applyAll()}
+$("#scr").onclick=async()=>{
+  if(L.scr){stopScr();pub();return}
+  try{
+    const q=Q[S.q],m=await navigator.mediaDevices.getDisplayMedia({video:{height:{ideal:q[0]},frameRate:{ideal:q[1]}},audio:true});
+    L.scr=m.getVideoTracks()[0];L.scr.contentHint="detail";L.scrA=m.getAudioTracks()[0]||null;
+    L.scr.onended=()=>{if(L.scr===m.getVideoTracks()[0]){stopScr();pub()}};
+    if(L.scrA){const audioTrack=L.scrA;audioTrack.onended=()=>{if(L.scrA===audioTrack){L.scrA=null;applyAll()}}}
+  }catch(e){if(e&&e.name!=="NotAllowedError")console.warn("Screen share failed",e);return}
+  pub();sfx("screenshare");
+};
+$("#copy").onclick=()=>navigator.clipboard.writeText(room);
+$("#sbb").onclick=()=>drawerOpen.sound?closeDrawer("sound"):openDrawer("sound");
+$("#chatbtn").onclick=()=>drawerOpen.chat?closeDrawer("chat"):openDrawer("chat");
+$("#sbclose").onclick=()=>closeDrawer("sound");$("#chatclose").onclick=()=>closeDrawer("chat");
+let suppressGearClick=false;$("#stb").addEventListener("click",e=>{if(gearMoved||suppressGearClick){e.preventDefault();e.stopPropagation();suppressGearClick=false;gearMoved=false;return}showModal("#settingsback")});
+$(".modalclose").onclick=()=>hideModal("#settingsback");$(".sfxclose").onclick=()=>hideModal("#sfxback");
+["#settingsback","#sfxback"].forEach(sel=>$(sel).addEventListener("click",e=>{if(e.target===$(sel))hideModal(sel)}));
+$("#opensfx").onclick=()=>{hideModal("#settingsback");showModal("#sfxback")};
+$("#sfxenabled").checked=!!sfxPrefs.enabled;$("#sfxwave").value=sfxPrefs.wave;$("#sfxpitch").value=sfxPrefs.pitch;$("#sfxduration").value=sfxPrefs.duration;$("#sfxvolume").value=sfxPrefs.volume;updateWave();
+$("#sfxenabled").onchange=e=>{sfxPrefs.enabled=e.target.checked;saveUIPrefs();if(sfxPrefs.enabled)sfx("toggle")};
+["#sfxwave","#sfxpitch","#sfxduration","#sfxvolume"].forEach(sel=>$(sel).addEventListener("input",()=>{const a=$("#sfxaction").value;sfxPrefs.actions=sfxPrefs.actions||{};sfxPrefs.actions[a]={wave:$("#sfxwave").value,pitch:Number($("#sfxpitch").value),duration:Number($("#sfxduration").value),volume:Number($("#sfxvolume").value)};if(a==="default"){sfxPrefs.wave=$("#sfxwave").value;sfxPrefs.pitch=Number($("#sfxpitch").value);sfxPrefs.duration=Number($("#sfxduration").value);sfxPrefs.volume=Number($("#sfxvolume").value)}updateWave();saveUIPrefs()}));
+$("#sfxpreview").onclick=()=>{const was=sfxPrefs.enabled;sfxPrefs.enabled=true;sfx("send");sfxPrefs.enabled=was};
+$("#sfxreset").onclick=()=>{sfxPrefs={...sfxPrefs,wave:"sine",pitch:660,duration:100,volume:20};$("#sfxwave").value=sfxPrefs.wave;$("#sfxpitch").value=sfxPrefs.pitch;$("#sfxduration").value=sfxPrefs.duration;$("#sfxvolume").value=sfxPrefs.volume;updateWave();saveUIPrefs()};
+// Keep the splitter operable at either extreme; it is never removed from the layout.
+const splitEl=$("#splitter");function splitAt(y){const r=$("#dock").getBoundingClientRect();drawerSplit=Math.max(0,Math.min(100,Math.round((y-r.top)/Math.max(1,r.height-12)*100)));applyDrawerState()}
+splitEl.addEventListener("pointerdown",e=>{if(!drawerOpen.sound||!drawerOpen.chat)return;dragSplit=e.pointerId;splitEl.classList.add("dragging");splitEl.setPointerCapture(e.pointerId);splitAt(e.clientY);e.preventDefault()});splitEl.addEventListener("pointermove",e=>{if(dragSplit===e.pointerId)splitAt(e.clientY)});function endSplit(e){if(dragSplit===e.pointerId){dragSplit=null;splitEl.classList.remove("dragging")}}splitEl.addEventListener("pointerup",endSplit);splitEl.addEventListener("pointercancel",endSplit);splitEl.addEventListener("keydown",e=>{if(e.key==="ArrowUp"||e.key==="ArrowDown"){drawerSplit=Math.max(0,Math.min(100,drawerSplit+(e.key==="ArrowUp"?-5:5)));applyDrawerState();e.preventDefault()}});
+// Horizontal workspace resize. Dock width is constrained to preserve a usable stage.
+const dockGrip=$("#dockwidth");function dockAt(x){const mainRect=$("main").getBoundingClientRect();dockWidth=Math.max(240,Math.min(Math.round(mainRect.right-x),Math.max(240,mainRect.width-240)));applyDrawerState()}
+dockGrip.addEventListener("pointerdown",e=>{if(!drawerOpen.sound&&!drawerOpen.chat)return;dragDock=e.pointerId;dockGrip.classList.add("dragging");dockGrip.setPointerCapture(e.pointerId);dockAt(e.clientX);e.preventDefault()});dockGrip.addEventListener("pointermove",e=>{if(dragDock===e.pointerId)dockAt(e.clientX)});function endDock(e){if(dragDock===e.pointerId){dragDock=null;dockGrip.classList.remove("dragging")}}dockGrip.addEventListener("pointerup",endDock);dockGrip.addEventListener("pointercancel",endDock);
+dockGrip.addEventListener("keydown",e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){dockWidth=Math.max(240,Math.min(720,dockWidth+(e.key==="ArrowLeft"?20:-20)));applyDrawerState();e.preventDefault()}});
+function showHistory(){showModal("#historyback")}
+function hideHistory(){hideModal("#historyback")}
+$("#showchangelog").onclick=showHistory;
+$("#showchangelogfooter").onclick=showHistory;
+$("#historyclose").onclick=hideHistory;
+$("#historyback").addEventListener("click",e=>{if(e.target===$("#historyback"))hideHistory()});
+function applyTempLimits(){const l=sfxPrefs.limits||{},allow=l.allowTemp!==false,max=Number(l.tempmax)||86400;["#tempduration","#tempmenu"].forEach(sel=>{const el=$(sel);[...el.options].forEach(o=>{if(o.value!=="0")o.hidden=Number(o.value)>max});el.disabled=!allow;if(allow&&Number(el.value)>max)el.value=String(max)});$("#filesEnabled").checked=l.allowFiles!==false;$("#sbuploadsEnabled").checked=l.allowSBUploads!==false;$("#fileinput").disabled=l.allowFiles===false;$("#up").disabled=l.allowSBUploads===false;$("#attachfile").disabled=l.allowFiles===false}
+function saveLimits(){sfxPrefs.limits={...sfxPrefs.limits,sbmax:Math.max(1,Math.min(100,Number($("#sbmax").value)||8)),filemax:Math.max(1,Math.min(1024,Number($("#filemax").value)||1024)),tempdefault:Number($("#tempdefault").value)||0,tempmax:Number($("#tempmax").value)||86400,allowTemp:$("#tempallowed").checked,allowSBUploads:$("#sbuploadsEnabled").checked,allowFiles:$("#filesEnabled").checked};applyTempLimits();saveUIPrefs()}
+$("#sbmax").value=sfxPrefs.limits.sbmax||8;$("#filemax").value=sfxPrefs.limits.filemax||1024;$("#tempdefault").value=String(sfxPrefs.limits.tempdefault||0);$("#tempmax").value=String(sfxPrefs.limits.tempmax||86400);$("#tempallowed").checked=sfxPrefs.limits.allowTemp!==false;$("#sbuploadsEnabled").checked=sfxPrefs.limits.allowSBUploads!==false;$("#filesEnabled").checked=sfxPrefs.limits.allowFiles!==false;
+["#sbmax","#filemax","#tempdefault","#tempmax","#tempallowed","#sbuploadsEnabled","#filesEnabled"].forEach(sel=>$(sel).addEventListener("change",saveLimits));applyTempLimits();
+$("#sfxaction").onchange=()=>{const a=$("#sfxaction").value,p={...sfxPrefs,...(sfxPrefs.actions&&sfxPrefs.actions[a]||{})};$("#sfxwave").value=p.wave||"sine";$("#sfxpitch").value=p.pitch||660;$("#sfxduration").value=p.duration||100;$("#sfxvolume").value=p.volume??20;updateWave()};
+["#sfxwave","#sfxpitch","#sfxduration","#sfxvolume"].forEach(sel=>$(sel).addEventListener("input",()=>{const a=$("#sfxaction").value;sfxPrefs.actions=sfxPrefs.actions||{};sfxPrefs.actions[a]={wave:$("#sfxwave").value,pitch:Number($("#sfxpitch").value),duration:Number($("#sfxduration").value),volume:Number($("#sfxvolume").value)};saveUIPrefs()}));
+$("#sfxupload").onchange=async e=>{const f=e.target.files[0];if(!f)return;if(f.size>5*1024*1024){alert("Custom SFX must be 5 MB or smaller.");e.target.value="";return}await txStore("fx","readwrite",st=>st.put({id:$("#sfxaction").value,blob:f,name:f.name}));e.target.value="";alert("Custom sound saved for this action in this browser.")};
+$("#sfxclearcustom").onclick=async()=>{await txStore("fx","readwrite",st=>st.delete($("#sfxaction").value));alert("Custom sound removed.")};
+// Dragging the gear rotates it; a normal click still opens settings.
+let gearDrag=null,gearMoved=false;const gear=$("#gear");gear.addEventListener("pointerdown",e=>{gearDrag={x:e.clientX,y:e.clientY,angle:0};gearMoved=false;gear.setPointerCapture(e.pointerId)});gear.addEventListener("pointermove",e=>{if(!gearDrag)return;const dx=e.clientX-gearDrag.x,dy=e.clientY-gearDrag.y;if(Math.hypot(dx,dy)>4)gearMoved=true;if(gearMoved){gearDrag.angle+=dx+dy;gear.querySelector("svg").style.transform=`rotate(${gearDrag.angle}deg)`;$("#stb").classList.add("spinning")}});gear.addEventListener("pointerup",()=>{if(gearMoved){suppressGearClick=true;setTimeout(()=>{$("#stb").classList.remove("spinning");gear.querySelector("svg").style.transform="";suppressGearClick=false;gearMoved=false},350)}gearDrag=null});
+
+$("#chatclear").onclick=()=>{if(!confirm("Clear the chat history saved in this browser for this room? This will not delete messages from anyone else's device."))return;chatMessages=[];saveChat();renderChat();sfx("toggle")};
+$("#chatform").addEventListener("submit",e=>{
+  e.preventDefault();const input=$("#chatinput"),text=input.value.trim();if(!text||!room)return;
+  const target=$("#privateto").value,seconds=sfxPrefs.limits.allowTemp===false?0:Math.min(Number($("#tempduration").value)||0,Number(sfxPrefs.limits.tempmax)||86400),id=`${uid}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  const m={type:"chat",id,name:S.name||"Guest",color:S.color,text:text.slice(0,CHAT_MAX),ts:Date.now(),from:uid,target,expiresAt:seconds?Date.now()+seconds*1000:0,reply:replyingTo?{id:replyingTo.id,name:replyingTo.name,text:replyingTo.text}:null,readBy:[],sentStatus:"Sent"};
+  addChatMessage(m);sfx("send");const sent=sendPacket(m,target);
+  input.value="";input.style.height="auto";replyingTo=null;$("#replybanner").classList.remove("open");
+  if(!sent)$("#chatstatus").textContent="No connected peers — message stayed on this device";
+});
+$("#chatinput").addEventListener("input",typingBroadcast);
+$("#plusbtn").onclick=()=>$("#plusmenu").classList.toggle("open");
+$("#attachfile").onclick=()=>{$("#plusmenu").classList.remove("open");$("#fileinput").click()};
+$("#fileinput").onchange=e=>{const f=e.target.files[0];if(f)offerFile(f);e.target.value=""};
+$("#createpoll").onclick=()=>{const question=prompt("Poll question?");if(!question)return;const raw=prompt("Enter 2–8 options separated by commas:","Option 1, Option 2");if(!raw)return;const options=raw.split(",").map(x=>x.trim()).filter(Boolean).slice(0,8);if(options.length<2)return alert("A poll needs at least two options.");const multiple=confirm("Allow selecting multiple options? Choose Cancel for single-choice.");const anonymous=confirm("Make this poll anonymous? (Vote counts will still be visible.)");const minutes=Number(prompt("Close poll after how many minutes? Enter 0 for no expiry.","0"));const id=`poll-${uid}-${Date.now()}`;const m={type:"poll",kind:"poll",id,name:S.name||"Guest",color:S.color,from:uid,text:question.slice(0,180),options,votes:{},allowMultiple:multiple,anonymous,expiresAt:minutes>0?Date.now()+minutes*60000:0,ts:Date.now(),target:$("#privateto").value};addChatMessage(m);sendPacket(m,m.target);$("#plusmenu").classList.remove("open");sfx("poll")};
+$("#tempmenu").onchange=e=>{$("#tempduration").value=e.target.value};
+$("#replycancel").onclick=()=>{replyingTo=null;$("#replybanner").classList.remove("open")};
+$("#chatlog").addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b)return;
+ if(b.dataset.filePlay){const id=b.dataset.filePlay,m=findMessage(id);let src=receivedFileUrls.get(id);if(m&&m.from===uid&&outgoingFiles.has(id)){if(!src){src=URL.createObjectURL(outgoingFiles.get(id));receivedFileUrls.set(id,src)}}if(!src){alert("To keep file sharing on-demand, request the download first. Once received, this button plays the audio locally.");return}if(audioPlayers[id]&&!audioPlayers[id].paused){audioPlayers[id].pause();b.textContent="▶ Play audio"}else{const a=audioPlayers[id]||(audioPlayers[id]=new Audio(src));a.onended=()=>{b.textContent="▶ Play audio"};a.play().then(()=>b.textContent="❚❚ Pause audio").catch(()=>alert("This audio format could not be played by your browser."))}return}
+ const id=b.dataset.reply||b.dataset.react||b.dataset.copy||b.dataset.edit||b.dataset.unsend||b.dataset.delete||b.dataset.pollVote;const m=findMessage(id);
+ if(b.dataset.reply&&m){replyingTo=m;$("#replylabel").textContent=`Replying to ${m.name}: ${(m.text||m.fileName||"attachment").slice(0,100)}`;$("#replybanner").classList.add("open");$("#chatinput").focus()}
+ if(b.dataset.react&&m){const emoji=prompt("Reaction emoji:","❤️");if(emoji){sendPacket({type:"reaction",id,emoji:emoji.slice(0,8)},m.target&&m.target!=="all"?m.target:"all");m.reactions=m.reactions||[];const r=m.reactions.find(x=>x.emoji===emoji);if(r)r.count++;else m.reactions.push({emoji,count:1});saveChat();renderChat()}}
+ if(b.dataset.copy&&m)navigator.clipboard?.writeText(m.text||m.fileName||"").catch(()=>{});
+ if(b.dataset.edit&&m){const text=prompt("Edit your message:",m.text);if(text!==null){m.text=text.slice(0,CHAT_MAX);m.edited=true;saveChat();renderChat();sendPacket({type:"edit",id,text:m.text},m.target&&m.target!=="all"?m.target:"all")}}
+ if(b.dataset.unsend&&m&&confirm("Unsend this message for everyone? Connected recipients will be asked to remove it; disconnected copies may remain.")){sendPacket({type:"unsend",id},m.target&&m.target!=="all"?m.target:"all");chatMessages=chatMessages.filter(x=>x.id!==id);saveChat();renderChat()}
+ if(b.dataset.delete&&m){chatMessages=chatMessages.filter(x=>x.id!==id);saveChat();renderChat()}
+ if(b.dataset.pollVote){const opts=[...document.querySelectorAll(`[data-poll="${CSS.escape(id)}"]:checked`)].map(x=>Number(x.dataset.option));if(opts.length){m.votes=m.votes||{};m.votes[uid]=opts;sendPacket({type:"poll-vote",id,options:opts},m.from||"all");saveChat();renderChat()}}
+});
+// Download intentionally requires a context-menu gesture or a long press on touch screens.
+let filePressTimer=null,filePressStart=null;$("#chatlog").addEventListener("contextmenu",e=>{const b=e.target.closest("[data-file-download]");if(!b)return;e.preventDefault();requestFileDownload(b.dataset.fileDownload)});
+$("#chatlog").addEventListener("pointerdown",e=>{const b=e.target.closest("[data-file-download]");if(!b||e.pointerType==="mouse")return;filePressStart={x:e.clientX,y:e.clientY};filePressTimer=setTimeout(()=>{requestFileDownload(b.dataset.fileDownload);filePressTimer=null;filePressStart=null},700)});
+["pointerup","pointercancel"].forEach(ev=>$("#chatlog").addEventListener(ev,()=>{if(filePressTimer){clearTimeout(filePressTimer);filePressTimer=null}filePressStart=null}));$("#chatlog").addEventListener("pointermove",e=>{if(filePressTimer&&filePressStart&&Math.hypot(e.clientX-filePressStart.x,e.clientY-filePressStart.y)>12){clearTimeout(filePressTimer);filePressTimer=null;filePressStart=null}});
+$("#chatinput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#chatform").requestSubmit()}});
+$("#chatinput").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"});
+$("#qsel").onchange=e=>{S.q=e.target.value;localStorage.q=S.q;applyAll()};
+$("#leave").onclick=async()=>{
+  sfx("leave");try{if(L.cam)L.cam.stop();stopScr();for(const p of Object.values(peers)){try{p.chat?.close();p.pc?.close()}catch{}}if(ac)await ac.close()}catch{}
+  if(seatRef)await remove(seatRef).catch(()=>{});location.reload();
+};
+addEventListener("keydown",e=>{
+  if(e.key==="Escape"){hideModal("#sfxback");hideModal("#settingsback");hideHistory();if(drawerOpen.chat)closeDrawer("chat");else if(drawerOpen.sound)closeDrawer("sound");return}
+  if(!seatRef||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable)return;
+  if(e.key==="m"){L.mic=!L.mic;pub()}
+  if(e.key==="d"){L.deaf=!L.deaf;pub()}
+});
+
+const idb=new Promise((res,rej)=>{
+  const r=indexedDB.open("free-rtc",2);
+  r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("s"))r.result.createObjectStore("s",{keyPath:"id",autoIncrement:true});if(!r.result.objectStoreNames.contains("fx"))r.result.createObjectStore("fx",{keyPath:"id"})};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);
+});
+const tx=async(mode,f)=>{
+  const d=await idb;
+  return new Promise((res,rej)=>{
+    const t=d.transaction("s",mode),r=f(t.objectStore("s"));
+    t.oncomplete=()=>res(r.result);t.onerror=()=>rej(t.error);
+  });
+};
+const txStore=async(store,mode,f)=>{const d=await idb;return new Promise((res,rej)=>{const t=d.transaction(store,mode),r=f(t.objectStore(store));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})};
+const bufs={},live=new Set();
+async function listSounds(){
+  const all=(await tx("readonly",s=>s.getAll())).filter(x=>!x.isFx);
+  $("#sounds").innerHTML=all.map(x=>`<div><button class="s" data-p="${x.id}">${esc(x.emoji||"🔊")} ${esc(x.name)}</button><button class="x" data-d="${x.id}" aria-label="Delete">×</button></div>`).join("")||"<small>Upload audio files to build your soundboard.</small>";
+}
+async function play(id){
+  if(!ac)return;
+  if(!bufs[id]){
+    const x=await tx("readonly",s=>s.get(id));if(!x)return;
+    bufs[id]=await ac.decodeAudioData(await x.blob.arrayBuffer());
+  }
+  sfx("soundboard");const n=ac.createBufferSource();n.buffer=bufs[id];n.connect(sbGain);
+  live.add(n);n.onended=()=>live.delete(n);n.start();
+}
+$("#sounds").addEventListener("click",async e=>{
+  if(e.target.dataset.p)play(+e.target.dataset.p);
+  if(e.target.dataset.d){const id=+e.target.dataset.d;await tx("readwrite",s=>s.delete(id));delete bufs[id];listSounds()}
+});
+$("#up").onchange=async e=>{
+  if(sfxPrefs.limits.allowSBUploads===false){alert("Soundboard uploads are disabled in Settings.");e.target.value="";return}
+  for(const f of e.target.files){
+    const max=Math.max(1,Number(sfxPrefs.limits.sbmax)||8)*1024*1024;
+    if(f.size>max){alert(f.name+` is over your ${formatBytes(max)} soundboard limit.`);continue}
+    const emoji=prompt(`Choose an emoji for ${f.name} (for example 🔊, 😂, 🎵):`,"🔊")||"🔊";
+    await tx("readwrite",s=>s.add({name:f.name.replace(/\.[^.]+$/,""),emoji:emoji.slice(0,8),blob:f}));
+  }
+  e.target.value="";listSounds();
+};
+$("#sbv").oninput=e=>{sbGain.gain.value=+e.target.value};
+$("#sbs").onclick=()=>live.forEach(n=>n.stop());
+
+applyDrawerState();
+
+async function claim(){
+  for(let i=0;i<MAX;i++){
+    const r=ref(db,`rooms/${room}/seats/${i}`);
+    try{
+      const x=await runTransaction(r,c=>c?undefined:{uid,name:S.name,color:S.color,mic:true,deaf:false,cam:false,scr:false});
+      if(x.committed){seatRef=r;onDisconnect(r).remove();return 1}
+    }catch{}
+  }
+  return (await get(ref(db,`rooms/${room}/seats`))).size>=MAX?-1:0;
+}
+
+function showLandingError(message){
+  const box=$("#landerror");
+  if(box){box.textContent=message;box.hidden=false;}
+  else alert(message);
+}
+function permissionDenied(err){
+  const c=String(err?.code||"").toLowerCase(),m=String(err?.message||"").toLowerCase();
+  return c.includes("permission_denied")||c.includes("permission-denied")||m.includes("permission denied")||m.includes("permission_denied");
+}
+async function cleanupFailedStart(){
+  try{if(seatRef)await remove(seatRef).catch(()=>{});}catch{}
+  seatRef=null;
+  try{if(microphoneStream)microphoneStream.getTracks().forEach(t=>t.stop());}catch{}
+  microphoneStream=null;
+  try{if(ac)await ac.close();}catch{}
+  ac=null;
+}
+async function startRoom(create){
+  const buttons=[$("#create"),$("#join")];
+  buttons.forEach(b=>b.disabled=true);
+  $("#landerror").hidden=true;
+  try{await go(create);}
+  catch(e){
+    console.error("Free-RTC room startup failed:",e);
+    const denied=permissionDenied(e);
+    await cleanupFailedStart();
+    showLandingError(denied
+      ? "Firebase denied a room operation. This version no longer checks /createdAt; please verify the Realtime Database rules allow the app's room-seat read and room-password, auth, and seat writes. No database permissions were changed by this page."
+      : `Couldn't ${create?"create":"join"} the room. ${e?.message||"Please try again."}`);
+  }
+  finally{buttons.forEach(b=>b.disabled=false);}
+}
+async function go(create){
+  S.name=$("#name").value.trim()||"Guest";S.color=okColor($("#color").value);
+  localStorage.name=S.name;localStorage.color=S.color;
+  const pw=$("#pw").value;
+  room=null;
+  if(!create){
+    const entered=$("#code").value.trim();
+    if(!/^\d{1,3}$/.test(entered)){showLandingError("Enter a room code from 000 to 999.");return;}
+    room=entered.padStart(3,"0");
+  }
+  try{
+    if(!db){
+      const app=initializeApp(firebaseConfig);
+      uid=(await signInAnonymously(getAuth(app))).user.uid;
+      db=getDatabase(app);
+    }
+    await setupAudio();
+  }catch(e){throw new Error(`Could not start audio or sign in: ${e?.message||e}`)}
+  if(create){
+    let lastCreateError=null;
+    for(let t=0;t<40&&!room;t++){
+      const id=String(Math.floor(Math.random()*1000)).padStart(3,"0");
+      try{
+        // Keep the original room workflow. The /createdAt availability probes introduced in v1.3
+        // were not supported by the deployed Security Rules and caused a permission-denied crash.
+        const ss=await get(ref(db,`rooms/${id}/seats`));
+        if(ss.exists()&&Object.keys(ss.val()||{}).length)continue;
+        await set(ref(db,`rooms/${id}/pw`),await H(id,pw));
+        room=id;
+      }catch(e){
+        lastCreateError=e;
+        console.warn("Room candidate could not be created:",e);
+        if(permissionDenied(e))break;
+      }
+    }
+    if(!room){
+      if(lastCreateError&&permissionDenied(lastCreateError))throw lastCreateError;
+      throw new Error("No free room codes could be claimed. Please try again.");
+    }
+  }
+  const ar=ref(db,`rooms/${room}/auth/${uid}`);
+  await set(ar,await H(room,pw));
+  onDisconnect(ar).remove();
+  const r=await claim();
+  if(r!==1)throw new Error(r<0?"This room is full (10 people).":"Wrong password, or the room could not be joined.");
+  $("#land").style.display="none";$("#app").style.display="flex";sfx("join");
+  $("#rn").textContent="Room "+room;
+  chatMessages=loadChat(room);renderChat();updateChatStatus();renderRosterTarget();
+  $("#tempduration").value=String(sfxPrefs.limits.tempdefault||0);$("#tempmenu").value=String(sfxPrefs.limits.tempdefault||300);applyTempLimits();
+  onChildAdded(ref(db,`rooms/${room}/signals/${uid}`),s=>{
+    const m=s.val();remove(s.ref);
+    queue=queue.then(()=>onSig(m)).catch(console.error);
+  });
+  onValue(ref(db,`rooms/${room}/seats`),s=>{
+    seats={};
+    s.forEach(c=>{const v=c.val();seats[v.uid]=v});
+    for(const id in seats){
+      if(id===uid)continue;
+      const p=peers[id]||mkPeer(id);
+      p.seat=seats[id];
+      if(uid<id&&!p.pc)connect(p,true);
+    }
+    for(const id in peers)if(!seats[id]&&Date.now()-peers[id].born>5000)drop(id);
+    render();updateChatStatus();renderRosterTarget();
+  });
+  listSounds();loop();render();applyDrawerState();
+}
+$("#create").onclick=()=>startRoom(true);
+$("#join").onclick=()=>startRoom(false);
+$("#code").addEventListener("keydown",e=>{if(e.key==="Enter")startRoom(false)});
+</script>
+</body>
+</html>

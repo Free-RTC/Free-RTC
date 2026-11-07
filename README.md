@@ -63,7 +63,7 @@ Android and iOS will sadly not getting native apps because of complexity and cos
 
 **On Android** -> Open Chrome, go to **[https://free-rtc.web.app](https://free-rtc.web.app/)**, tap the three-dot menu, press Install and create shortcut (or Add to Home Screen) and bam!
 ## What if I want to run it myself?
-Sure, you are free to use the code from Free-RTC however you want. Just download the [newest HTML](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/src/web/free-rtc-v2.1.html/), replace the stock Firebase RTDB config with your own, and make your Firebase rules match the [latest rules](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/src/firebase/rtdb-rules-v2.1.json/). Change it, expand upon it, however you want. Profit off of it, sure! No credit needed. Just make sure you understand it, as Free-RTC’s security isn’t the best.
+Sure, you are free to use the code from Free-RTC however you want. Just download the [newest HTML](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/src/web/free-rtc-v2.1.html/), replace the stock Firebase RTDB config with your own, and make your Firebase rules match the [latest rules](https://raw.githubusercontent.com/free-rtc/free-rtc/refs/heads/main/src/firebase/rtdb-rules-v2.1.json/). Change it, expand upon it, however you want. Profit off of it, sure! No credit needed. Just make sure you understand how the code works.
 ## Plans for v2.2
 There aren't currently many plans for version 2.2. If you have any, contact the support below!
 ##
